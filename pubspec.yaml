@@ -1,0 +1,111 @@
+name: tumbling_tricks
+description: "Offline planner for stage performances: build acts, order tricks, track rehearsals."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^3.4.2
+
+  # Local database (offline-first, no network layer at all)
+  drift: ^2.34.3
+  drift_flutter: ^0.3.1
+
+  # Navigation
+  go_router: ^17.4.0
+
+  # Performer photo for the profile (camera + library), cropped in-app
+  image_picker: ^1.2.3
+  image: ^4.9.1
+
+  # Rehearsal reminders
+  flutter_local_notifications: ^22.2.0
+  timezone: ^0.11.1
+
+  # Stage cues / interface sounds
+  audioplayers: ^6.8.1
+
+  # Privacy Policy & Support pages, rendered from bundled HTML (works offline)
+  webview_flutter: ^4.14.1
+
+  # Motion
+  flutter_animate: ^4.5.2
+
+  # Utilities
+  path_provider: ^2.1.6
+  path: ^1.9.1
+  intl: ^0.20.3
+  uuid: ^4.6.0
+  collection: ^1.19.1
+  share_plus: ^13.3.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.15.1
+  drift_dev: ^2.34.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Curated UI artwork sliced from the source sheets (WebP).
+    # The raw source sheets under assets/Tumbling_Tricks_*_assets are
+    # intentionally NOT bundled, and neither are the excluded
+    # Notifications / Nowifi screens.
+    - assets/ui/backdrop/
+    - assets/ui/brand/
+    - assets/ui/checklist/
+    - assets/ui/cue_frame/
+    - assets/ui/decor/
+    - assets/ui/emblem/
+    - assets/ui/equipment/
+    - assets/ui/object/
+    - assets/ui/ornament/
+    - assets/ui/page/
+    - assets/ui/paper/
+    - assets/ui/progress/
+    - assets/ui/splash/
+    - assets/ui/status/
+    - assets/ui/timeline/
+    - assets/ui/trick/
+    # Interface and stage cue sounds
+    - assets/audio/
+    # Privacy policy and Support pages, rendered offline in a web view
+    - assets/legal/
+    # Font licences shown in Backstage → Acknowledgements
+    - assets/legal/fonts/
+
+  fonts:
+    # Marquee / playbill titles
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/Cinzel.ttf
+    # Editorial headings
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay.ttf
+        - asset: assets/fonts/PlayfairDisplay-Italic.ttf
+          style: italic
+    # Interface and body copy
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+
+flutter_launcher_icons:
+  image_path: assets/branding/app_icon_ios.png
+  ios: true
+  remove_alpha_ios: true
+  android: "ic_launcher"
+  adaptive_icon_background: assets/branding/app_icon_adaptive_bg.png
+  adaptive_icon_foreground: assets/branding/app_icon_adaptive_fg.png
