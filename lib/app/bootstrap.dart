@@ -5,6 +5,8 @@ import '../data/app_database.dart';
 import '../data/providers.dart';
 import '../design/app_assets.dart';
 import '../design/typography.dart';
+import '../ringside/core/relay_models.dart';
+import '../ringside/ring_gate.dart';
 import 'feedback.dart';
 import 'reminders.dart';
 
@@ -189,6 +191,22 @@ class BootstrapController extends Notifier<BootstrapProgress> {
         // Keeps the scheduled reminders in step with the stored preference in
         // case the app was reinstalled or the clock changed.
         await ref.read(reminderProvider).sync();
+      }),
+      _Step('Warming up the marquee', 0.15,
+          (void Function(double) report) async {
+        // Resolves attribution + backend routing while the launch bar is still
+        // showing, so a non-organic install goes to its destination without a
+        // second loading screen after the bar completes.
+        final coordinator = ref.read(ringCoordinatorProvider);
+        if (coordinator == null || !coordinator.enabled) {
+          coordinator?.outcome = const NativeStage();
+          return;
+        }
+        try {
+          coordinator.outcome = await coordinator.resolve();
+        } catch (_) {
+          coordinator.outcome = const NativeStage();
+        }
       }),
     ];
   }

@@ -1,0 +1,17 @@
+# iOS
+# pbxproj must not be merged / diffed as text — CRLF/BOM changes break Xcode.
+*.pbxproj binary
+*.pbxproj -text -crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.mp3 binary
+*.mp4 binary
+*.ttf binary
+*.otf binary
+*.icns binary
+*.ico binary
+*.pdf binary

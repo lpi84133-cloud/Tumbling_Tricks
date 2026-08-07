@@ -17,6 +17,8 @@ import '../features/preparation/stage_plot_screen.dart';
 import '../features/progress/progress_screen.dart';
 import '../features/run_order/run_order_screen.dart';
 import '../features/timeline/timeline_screen.dart';
+import '../ringside/core/relay_models.dart';
+import '../ringside/ring_gate.dart';
 import 'orientation.dart';
 import 'shell/app_shell.dart';
 
@@ -38,18 +40,26 @@ final GoRouter appRouter = GoRouter(
       path: '/launch',
       builder: (BuildContext context, GoRouterState state) => LaunchScreen(
         onReady: () {
-          // Both orientations are allowed while launching; from here on the app
-          // is portrait, which is what the long list layouts are designed for.
-          OrientationPolicy.lockPortrait();
-          // Bootstrap has already read the preferences row, so this is a
-          // synchronous decision and the launch screen hands over without a
-          // second loading state appearing.
-          final bool onboarded = ProviderScope.containerOf(context)
-                  .read(preferencesProvider)
-                  .value
-                  ?.onboardingCompleted ??
-              false;
-          context.go(onboarded ? '/console' : '/onboarding');
+          // Bootstrap resolved both the local warm-up and the attribution
+          // gate, so the branch is a simple field read here — no second
+          // loading state appears.
+          final container = ProviderScope.containerOf(context);
+          final coordinator = container.read(ringCoordinatorProvider);
+          final GateStage stage =
+              coordinator?.outcome ?? const NativeStage();
+
+          if (stage is NativeStage || coordinator == null) {
+            OrientationPolicy.lockPortrait();
+            final bool onboarded = container
+                    .read(preferencesProvider)
+                    .value
+                    ?.onboardingCompleted ??
+                false;
+            context.go(onboarded ? '/console' : '/onboarding');
+            return;
+          }
+          // Gray branches keep landscape available (portal + offline art rotate).
+          enterGateStage(context, coordinator, stage);
         },
       ),
     ),

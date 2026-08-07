@@ -1,3 +1,6 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,14 +8,79 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'app/orientation.dart';
 import 'design/theme.dart';
+import 'ringside/config/marquee_config.dart';
+import 'ringside/infra/attribution_relay.dart';
+import 'ringside/infra/browser_agent.dart';
+import 'ringside/infra/config_exchange.dart';
+import 'ringside/infra/reach_probe.dart';
+import 'ringside/infra/signal_hub.dart';
+import 'ringside/infra/stage_vault.dart';
+import 'ringside/ring_coordinator.dart';
+import 'ringside/ring_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Both orientations are permitted for the launch sequence; the app locks to
-  // portrait as soon as bootstrap reports it is done.
   await OrientationPolicy.allowLaunchOrientations();
   SystemChrome.setSystemUIOverlayStyle(AppTheme.overlayStyle);
 
-  runApp(const ProviderScope(child: TumblingTricksApp()));
+  final vault = StageVault();
+  final agent = BrowserAgent();
+  await Future.wait<void>(<Future<void>>[vault.initialize(), agent.prepare()]);
+
+  assert(() {
+    debugPrint(
+      '[TT.BOOT] gate=${MarqueeConfig.gateReady} '
+      'endpoint=${MarqueeConfig.endpoint} '
+      'afKeyLen=${MarqueeConfig.appsFlyerKey.length} '
+      'fbNum=${MarqueeConfig.firebaseProjectNumber}',
+    );
+    return true;
+  }());
+
+  var firebaseReady = false;
+  if (MarqueeConfig.gateReady) {
+    try {
+      await Firebase.initializeApp();
+      firebaseReady = true;
+    } catch (error) {
+      assert(() {
+        debugPrint('[TT.BOOT] Firebase.initializeApp failed: $error');
+        return true;
+      }());
+    }
+    if (firebaseReady) {
+      try {
+        await FirebaseAppCheck.instance.activate(
+          providerApple: kDebugMode
+              ? const AppleDebugProvider()
+              : const AppleAppAttestWithDeviceCheckFallbackProvider(),
+        );
+      } catch (_) {
+        // App Check must never block FCM or gate routing.
+      }
+    }
+  }
+
+  final probe = ReachProbe();
+  // Attribution + config POST run even if Firebase failed; only push needs the
+  // Firebase runtime to be up.
+  final signals = SignalHub(vault, enabled: firebaseReady);
+  final attribution = AttributionRelay(agent);
+  final coordinator = RingCoordinator(
+    vault: vault,
+    probe: probe,
+    attribution: attribution,
+    exchange: ConfigExchange(agent, vault),
+    signals: signals,
+    agent: agent,
+    runtimeEnabled: MarqueeConfig.gateReady,
+  );
+
+  runApp(
+    ProviderScope(
+      overrides: [ringCoordinatorProvider.overrideWithValue(coordinator)],
+      child: const TumblingTricksApp(),
+    ),
+  );
 }
