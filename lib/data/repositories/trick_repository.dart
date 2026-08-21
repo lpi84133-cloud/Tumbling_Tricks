@@ -74,6 +74,17 @@ class TrickRepository {
         .watchSingleOrNull();
   }
 
+  /// Loads a batch of tricks by id, indexed by id. Returns an empty map when
+  /// [ids] is empty so callers can pass a set derived from run-order beats
+  /// without a length guard. Missing rows are simply absent from the result.
+  Future<Map<int, TrickRow>> getByIds(Set<int> ids) async {
+    if (ids.isEmpty) return const <int, TrickRow>{};
+    final List<TrickRow> rows = await (_db.select(_db.tricks)
+          ..where((Tricks t) => t.id.isIn(ids)))
+        .get();
+    return <int, TrickRow>{for (final TrickRow row in rows) row.id: row};
+  }
+
   /// One row per discipline, whether or not it currently holds any tricks, so
   /// the library always shows all four sections.
   Stream<List<DisciplineStats>> watchDisciplineStats() {

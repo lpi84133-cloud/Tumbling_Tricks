@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/app_database.dart';
+import '../../data/models/act_report.dart';
 import '../../data/models/act_summary.dart';
 import '../../data/models/run_order.dart';
 import '../../data/providers.dart';
@@ -12,6 +13,7 @@ import '../../design/enum_art.dart';
 import '../shared/act_widgets.dart';
 import '../shared/format.dart';
 import '../shared/page_frame.dart';
+import 'act_report_sheet.dart';
 import 'beat_sheet.dart';
 import 'block_sheet.dart';
 import 'trick_picker_sheet.dart';
@@ -40,6 +42,12 @@ class RunOrderScreen extends ConsumerWidget {
         title: 'Run Order',
         crest: summary?.act.emblem.crest,
         onBack: () => context.pop(),
+        trailing: order.isEmpty
+            ? null
+            : _ReportButton(
+                actId: actId,
+                onTap: () => ActReportSheet.show(context, actId),
+              ),
       ),
       floating: FilledButton.icon(
         onPressed: () => BlockSheet.add(context, actId),
@@ -478,6 +486,75 @@ class _BeatRow extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Structural analysis button in the run-order header.
+///
+/// The icon carries the severity: a quiet brass circle when everything reads
+/// clean, amber when there are warnings, red when something critical needs
+/// attention. Tapping opens the full report.
+class _ReportButton extends ConsumerWidget {
+  const _ReportButton({required this.actId, required this.onTap});
+
+  final int actId;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<ActReport> report = ref.watch(actReportProvider(actId));
+    final ActReport? value = report.value;
+    final IssueSeverity? severity = value?.overallSeverity;
+    final bool clean = value != null && value.isClean;
+    final int count = value?.issues.length ?? 0;
+
+    final Color tint = clean
+        ? Palette.emeraldGlow
+        : severity?.tint ?? Palette.brassDim;
+    final IconData icon = clean
+        ? Icons.verified_rounded
+        : severity?.icon ?? Icons.rule_rounded;
+
+    return Semantics(
+      button: true,
+      label: clean
+          ? 'Structure reads clean'
+          : '$count structural ${count == 1 ? 'finding' : 'findings'}',
+      child: IconButton(
+        onPressed: onTap,
+        icon: Stack(
+          clipBehavior: Clip.none,
+          children: <Widget>[
+            Icon(icon, color: tint),
+            if (!clean && count > 0)
+              Positioned(
+                right: -6,
+                top: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tint,
+                    borderRadius: Corners.pill,
+                    border: Border.all(color: Palette.ink, width: 1),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: AppText.micro.copyWith(
+                      color: Palette.ink,
+                      fontSize: 9,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        tooltip: 'Structure report',
       ),
     );
   }
