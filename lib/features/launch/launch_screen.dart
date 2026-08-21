@@ -26,11 +26,17 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
   bool _handedOver = false;
 
   /// True when the gray pre-flight in `main.dart` already decided this launch
-  /// is going to end at the offline view. In that case the progress bar and
-  /// its caption are hidden — the user sees only the splash artwork until the
-  /// bootstrap steps finish (still needed for DB, prefs, warmed assets), so
-  /// the "no connection" screen appears without a run to 100% first.
+  /// is going to end at the offline view. In that case the visible bar is
+  /// capped at 30%: bootstrap keeps running (DB, prefs, warmed assets are
+  /// still needed for Retry / Skip), but the user never sees the bar tick
+  /// past the offline threshold before the offline screen appears. When
+  /// Retry re-enters the gate, the bar continues from 30% up to 100% inside
+  /// [RingGate], keeping the launch feel one continuous progression.
   bool _preflightOffline = false;
+
+  /// Visible ceiling for the bar when [_preflightOffline] is true. Also the
+  /// starting value RingGate uses on Retry, so the two phases line up.
+  static const double _preflightCeiling = 0.3;
 
   @override
   void initState() {
@@ -55,6 +61,12 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
   @override
   Widget build(BuildContext context) {
     final BootstrapProgress progress = ref.watch(bootstrapProvider);
+    // Hand over only once bootstrap has actually finished, even on the
+    // preflight-offline path — the DB, preferences and warmed assets must
+    // be ready before the router replaces this screen, or Skip / Retry on
+    // the offline view will land on a half-initialised app. The visible
+    // bar is what stays under 30% on that path; the underlying work is
+    // allowed to complete normally.
     if (progress.isReady) _handOver();
 
     final bool isLandscape =
@@ -84,43 +96,45 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
               ),
             ),
           ),
-          // When pre-flight has already pinned this launch to the offline
-          // view, the progress bar is suppressed — showing the bar tick up
-          // to 100% only to reveal a "no connection" screen would mislead
-          // the user. The bootstrap steps still run in the background so
-          // the DB, preferences and warmed assets are ready by the time
-          // OfflineView's Retry or Skip is used.
-          if (!_preflightOffline)
-            SafeArea(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isLandscape ? Layout.pageInset * 3 : Layout.pageInset,
-                  vertical: Gap.xl,
-                ),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: Layout.maxContentWidth),
-                    child: progress.hasError
-                        ? _LaunchFailure(
-                            onRetry: () {
-                              ref.invalidate(bootstrapProvider);
-                              setState(() => _handedOver = false);
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                if (mounted) {
-                                  ref
-                                      .read(bootstrapProvider.notifier)
-                                      .start(context);
-                                }
-                              });
-                            },
-                          )
-                        : _LaunchProgress(progress: progress),
-                  ),
+          SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isLandscape ? Layout.pageInset * 3 : Layout.pageInset,
+                vertical: Gap.xl,
+              ),
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(maxWidth: Layout.maxContentWidth),
+                  child: progress.hasError
+                      ? _LaunchFailure(
+                          onRetry: () {
+                            ref.invalidate(bootstrapProvider);
+                            setState(() => _handedOver = false);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                ref
+                                    .read(bootstrapProvider.notifier)
+                                    .start(context);
+                              }
+                            });
+                          },
+                        )
+                      : _LaunchProgress(
+                          progress: progress,
+                          // When the offline view is inevitable, the bar
+                          // never ticks past 30% before it appears — the
+                          // remaining 70% is the second phase, resumed by
+                          // RingGate when the user hits Retry.
+                          visibleCeiling: _preflightOffline
+                              ? _preflightCeiling
+                              : 1.0,
+                        ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -128,12 +142,22 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
 }
 
 class _LaunchProgress extends StatelessWidget {
-  const _LaunchProgress({required this.progress});
+  const _LaunchProgress({
+    required this.progress,
+    this.visibleCeiling = 1.0,
+  });
 
   final BootstrapProgress progress;
 
+  /// Highest fraction the bar is allowed to display. Anything above this in
+  /// the underlying [BootstrapProgress] is clamped for the visible bar and
+  /// the percent readout, so a preflight-offline launch reads exactly the
+  /// same way regardless of how quickly the actual work finished.
+  final double visibleCeiling;
+
   @override
   Widget build(BuildContext context) {
+    final double target = progress.value.clamp(0.0, visibleCeiling);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +167,7 @@ class _LaunchProgress extends StatelessWidget {
         // The tween only ever runs between two real values, so the bar trails
         // the truth slightly and never leads it.
         TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0, end: progress.value),
+          tween: Tween<double>(begin: 0, end: target),
           duration: Motion.normal,
           curve: Motion.progress,
           builder: (BuildContext context, double shown, _) {
