@@ -81,10 +81,6 @@ class _OfflineViewState extends State<OfflineView> {
     });
   }
 
-  void _skip() {
-    widget.onSkip?.call();
-  }
-
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -94,64 +90,19 @@ class _OfflineViewState extends State<OfflineView> {
 
     final btnH = landscape ? 64.0 : 72.0;
     final btnFont = landscape ? 21.0 : 23.0;
+    final btnW = landscape
+        ? (media.size.width * 0.28).clamp(160.0, 260.0)
+        : (media.size.width * 0.66).clamp(260.0, 420.0);
 
-    // In landscape: Allow | Skip side by side, equal width, centred.
-    // In portrait: Allow on top, Skip below.
-    Widget buttons;
-    if (landscape) {
-      final btnW = (media.size.width * 0.28).clamp(160.0, 260.0);
-      buttons = Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          _OfflineButton(
-            width: btnW,
-            height: btnH,
-            fontSize: btnFont,
-            label: 'Allow',
-            emphasized: true,
-            busy: _checking,
-            onTap: _retry,
-          ),
-          const SizedBox(width: 16),
-          _OfflineButton(
-            width: btnW,
-            height: btnH,
-            fontSize: btnFont,
-            label: 'Skip',
-            emphasized: false,
-            busy: false,
-            onTap: widget.onSkip != null ? _skip : null,
-          ),
-        ],
-      );
-    } else {
-      final btnW = (media.size.width * 0.66).clamp(260.0, 420.0);
-      buttons = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _OfflineButton(
-            width: btnW,
-            height: btnH,
-            fontSize: btnFont,
-            label: 'Allow',
-            emphasized: true,
-            busy: _checking,
-            onTap: _retry,
-          ),
-          const SizedBox(height: 14),
-          _OfflineButton(
-            width: btnW * 0.9,
-            height: btnH - 6,
-            fontSize: btnFont - 2,
-            label: 'Skip',
-            emphasized: false,
-            busy: false,
-            onTap: widget.onSkip != null ? _skip : null,
-          ),
-        ],
-      );
-    }
+    final Widget buttons = _OfflineButton(
+      width: btnW,
+      height: btnH,
+      fontSize: btnFont,
+      label: 'Retry',
+      emphasized: true,
+      busy: _checking,
+      onTap: _retry,
+    );
 
     final align =
         landscape ? const Alignment(0.08, 0.52) : const Alignment(0, 0.80);
