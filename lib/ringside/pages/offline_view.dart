@@ -5,17 +5,17 @@ import 'package:flutter/services.dart';
 
 import '../infra/reach_probe.dart';
 
-/// Backstage art paths (nowifi / notifications) live under a project-unique
-/// asset folder segment.
+/// Backstage art paths (offline / permit backdrops) live under a
+/// project-unique asset folder segment.
 abstract final class RingArt {
   static const String nowifiPortrait =
-      'assets/Tumbling_Tricks_additional_assets/Vertical_Nowifi_Screen.webp';
+      'assets/Tumbling_Tricks_additional_assets/stage_offline_portrait.webp';
   static const String nowifiLandscape =
-      'assets/Tumbling_Tricks_additional_assets/Horizontal_Nowifi_Screen.webp';
+      'assets/Tumbling_Tricks_additional_assets/stage_offline_landscape.webp';
   static const String notifyPortrait =
-      'assets/Tumbling_Tricks_additional_assets/Vertical_Notifications_Screen.webp';
+      'assets/Tumbling_Tricks_additional_assets/stage_permit_portrait.webp';
   static const String notifyLandscape =
-      'assets/Tumbling_Tricks_additional_assets/Horizontal_Notifications_Screen.webp';
+      'assets/Tumbling_Tricks_additional_assets/stage_permit_landscape.webp';
 }
 
 /// Offline screen. Retry re-runs the whole pipeline by pushing a fresh

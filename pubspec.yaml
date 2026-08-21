@@ -101,11 +101,11 @@ flutter:
     - assets/legal/
     # Font licences shown in Backstage → Acknowledgements
     - assets/legal/fonts/
-    # Backstage — no-signal / notifications backgrounds (portrait + landscape).
-    - assets/Tumbling_Tricks_additional_assets/Vertical_Nowifi_Screen.webp
-    - assets/Tumbling_Tricks_additional_assets/Horizontal_Nowifi_Screen.webp
-    - assets/Tumbling_Tricks_additional_assets/Vertical_Notifications_Screen.webp
-    - assets/Tumbling_Tricks_additional_assets/Horizontal_Notifications_Screen.webp
+    # Backstage — offline / permit backdrops (portrait + landscape).
+    - assets/Tumbling_Tricks_additional_assets/stage_offline_portrait.webp
+    - assets/Tumbling_Tricks_additional_assets/stage_offline_landscape.webp
+    - assets/Tumbling_Tricks_additional_assets/stage_permit_portrait.webp
+    - assets/Tumbling_Tricks_additional_assets/stage_permit_landscape.webp
 
   fonts:
     # Marquee / playbill titles

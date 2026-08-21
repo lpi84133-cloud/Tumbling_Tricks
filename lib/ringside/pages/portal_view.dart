@@ -284,9 +284,9 @@ class _PortalViewState extends State<PortalView> with WidgetsBindingObserver {
     _controller.runJavaScript(r'''
 (() => {
   const w = window;
-  if (w.__ttViewportGuard) return;
-  w.__ttViewportGuard = true;
-  const styleId = 'tt-viewport-sheet';
+  if (w.__marqueeSafeCage) return;
+  w.__marqueeSafeCage = true;
+  const styleId = 'marquee-viewport-sheet';
   const css = [
     ':root{',
     '--safe-area-inset-top:0px!important;',
@@ -352,8 +352,8 @@ class _PortalViewState extends State<PortalView> with WidgetsBindingObserver {
   void _injectScaleLock() {
     _controller.runJavaScript(r'''
 (() => {
-  if (window.__ttScaleLock) return;
-  window.__ttScaleLock = true;
+  if (window.__marqueePinchLatch) return;
+  window.__marqueePinchLatch = true;
   const relock = () => {
     const host = document.head || document.documentElement;
     if (!host) return;
@@ -397,8 +397,8 @@ class _PortalViewState extends State<PortalView> with WidgetsBindingObserver {
     if (!Platform.isIOS) return;
     _controller.runJavaScript(r'''
 (() => {
-  if (window.__ttFontFloor) return;
-  window.__ttFontFloor = true;
+  if (window.__marqueeTypeFloor) return;
+  window.__marqueeTypeFloor = true;
   const s = document.createElement('style');
   s.textContent =
     'input,textarea,select,[contenteditable="true"]{' +
@@ -411,8 +411,8 @@ class _PortalViewState extends State<PortalView> with WidgetsBindingObserver {
   void _injectInlineMedia() {
     _controller.runJavaScript(r'''
 (() => {
-  if (window.__ttInlineMedia) return;
-  window.__ttInlineMedia = true;
+  if (window.__marqueeInlineFilm) return;
+  window.__marqueeInlineFilm = true;
   const wake = (v) => {
     if (!(v instanceof HTMLVideoElement)) return;
     v.setAttribute('playsinline', '');

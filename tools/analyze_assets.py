@@ -25,10 +25,10 @@ OUT_DIR = ROOT / "tools" / "_analysis"
 
 # Sheets we must never touch, per the project rules.
 EXCLUDED = {
-    "Horizontal_Notifications_Screen",
-    "Vertical_Notifications_Screen",
-    "Horizontal_Nowifi_Screen",
-    "Vertical_Nowifi_Screen",
+    "stage_permit_landscape",
+    "stage_permit_portrait",
+    "stage_offline_landscape",
+    "stage_offline_portrait",
 }
 
 ALPHA_THRESHOLD = 16
