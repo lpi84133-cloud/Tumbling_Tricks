@@ -25,11 +25,11 @@ class BootstrapProgress {
   });
 
   const BootstrapProgress.initial()
-      : value = 0,
-        label = 'Opening the house',
-        isReady = false,
-        isSlow = false,
-        error = null;
+    : value = 0,
+      label = 'Opening the house',
+      isReady = false,
+      isSlow = false,
+      error = null;
 
   /// 0 to 1. This is the real fraction of bootstrap work completed; nothing
   /// inflates it to look busy.
@@ -100,14 +100,29 @@ class BootstrapController extends Notifier<BootstrapProgress> {
   BootstrapProgress build() => const BootstrapProgress.initial();
 
   /// Starts the sequence. Safe to call more than once; only the first call runs.
-  Future<void> start(BuildContext context) async {
+  ///
+  /// When [essentialsOnly] is true, only the minimum work required to show
+  /// the offline view is performed — the database is opened and preferences
+  /// are read, but the heavy asset / font / catalog / summary steps are
+  /// skipped. This is used when [main] has already decided the launch will
+  /// end at the offline view, so the user is not made to wait for artwork
+  /// they will not see. The skipped work is picked up naturally on the next
+  /// launch (or from Retry, which re-enters the full pipeline).
+  Future<void> start(
+    BuildContext context, {
+    bool essentialsOnly = false,
+  }) async {
     if (_started) return;
     _started = true;
 
     final Stopwatch clock = Stopwatch()..start();
-    final List<_Step> steps = _buildSteps(context);
-    final double totalWeight =
-        steps.fold<double>(0, (double sum, _Step s) => sum + s.weight);
+    final List<_Step> steps = essentialsOnly
+        ? _buildEssentialSteps()
+        : _buildSteps(context);
+    final double totalWeight = steps.fold<double>(
+      0,
+      (double sum, _Step s) => sum + s.weight,
+    );
 
     double completed = 0;
 
@@ -140,7 +155,31 @@ class BootstrapController extends Notifier<BootstrapProgress> {
     // Waiting for it is what makes 100% honest.
     await WidgetsBinding.instance.endOfFrame;
 
-    state = state.copyWith(value: 1, label: 'Ready', isReady: true, isSlow: false);
+    state = state.copyWith(
+      value: 1,
+      label: 'Ready',
+      isReady: true,
+      isSlow: false,
+    );
+  }
+
+  /// The two steps that MUST complete before the offline view can render:
+  /// the database (used by Retry / Skip / preferences) and the singleton
+  /// preferences row. Everything else — assets, fonts, summary warm-up,
+  /// reminders, attribution — is either not needed on the offline screen
+  /// or can wait for the next launch without any user-visible cost.
+  List<_Step> _buildEssentialSteps() {
+    return <_Step>[
+      _Step('Opening the archive', 0.5, (void Function(double) report) async {
+        final AppDatabase db = ref.read(databaseProvider);
+        await db.customSelect('SELECT 1').get();
+      }),
+      _Step('Reading your settings', 0.5, (void Function(double) report) async {
+        final AppDatabase db = ref.read(databaseProvider);
+        await db.ensureSingletonRows();
+        await ref.read(preferencesRepositoryProvider).read();
+      }),
+    ];
   }
 
   List<_Step> _buildSteps(BuildContext context) {
@@ -151,21 +190,26 @@ class BootstrapController extends Notifier<BootstrapProgress> {
         final AppDatabase db = ref.read(databaseProvider);
         await db.customSelect('SELECT 1').get();
       }),
-      _Step('Reading your settings', 0.08, (void Function(double) report) async {
+      _Step('Reading your settings', 0.08, (
+        void Function(double) report,
+      ) async {
         final AppDatabase db = ref.read(databaseProvider);
         await db.ensureSingletonRows();
         await ref.read(preferencesRepositoryProvider).read();
         await ref.read(profileRepositoryProvider).read();
       }),
-      _Step('Stocking the trick library', 0.12, (void Function(double) report) async {
+      _Step('Stocking the trick library', 0.12, (
+        void Function(double) report,
+      ) async {
         await ref.read(databaseProvider).mergeTrickCatalog();
 
         // Runs the mastery-decay pass while the launch bar is still on
         // screen. Cheap in practice — one indexed read plus a batched update
         // — and doing it here means the console opens with the corrected
         // ratings rather than blipping them a moment later.
-        final AppPreferenceRow prefs =
-            await ref.read(preferencesRepositoryProvider).read();
+        final AppPreferenceRow prefs = await ref
+            .read(preferencesRepositoryProvider)
+            .read();
         if (prefs.decayEnabled) {
           await ref.read(trickRepositoryProvider).applyMasteryDecay();
         }
@@ -188,9 +232,9 @@ class BootstrapController extends Notifier<BootstrapProgress> {
           AppText.body,
         ]) {
           TextPainter(
-            text: TextSpan(text: 'Tumbling Tricks', style: style),
-            textDirection: TextDirection.ltr,
-          )
+              text: TextSpan(text: 'Tumbling Tricks', style: style),
+              textDirection: TextDirection.ltr,
+            )
             ..layout()
             ..dispose();
         }
@@ -209,8 +253,9 @@ class BootstrapController extends Notifier<BootstrapProgress> {
         // network round-trip would be a lie.
         unawaited(ref.read(attributionServiceProvider).initialize());
       }),
-      _Step('Warming up the marquee', 0.15,
-          (void Function(double) report) async {
+      _Step('Warming up the marquee', 0.15, (
+        void Function(double) report,
+      ) async {
         // Resolves attribution + backend routing while the launch bar is still
         // showing, so a non-organic install goes to its destination without a
         // second loading screen after the bar completes.
@@ -219,16 +264,21 @@ class BootstrapController extends Notifier<BootstrapProgress> {
           coordinator?.outcome = const NativeStage();
           return;
         }
-        // Honour the pre-flight decision made in `main.dart`: on a first-time
-        // gray candidate with no network interface the outcome is already
-        // pinned to [OfflineStage] and there is nothing gray-side left to do.
-        // Running the pipeline anyway would only add a DNS timeout to a
-        // decision that has already been made.
+        // Honour the pre-flight decision made in `main.dart`: on any launch
+        // that needs the network to decide (undecided route or returning
+        // portal) with no interface up, the outcome is already pinned to
+        // [OfflineStage] and there is nothing gray-side left to do here.
         if (coordinator.outcome != null) return;
         try {
           coordinator.outcome = await coordinator.resolve();
         } catch (_) {
-          coordinator.outcome = const NativeStage();
+          // A thrown resolve on a launch that needs the network to route
+          // must not silently downgrade to native — the offline view is
+          // the correct fallback, matching the "no decision without config"
+          // rule. Organic returning users keep their native stage.
+          coordinator.outcome = coordinator.vault.route == GateRoute.native
+              ? const NativeStage()
+              : const OfflineStage();
         }
       }),
     ];
@@ -264,7 +314,7 @@ class BootstrapController extends Notifier<BootstrapProgress> {
   ];
 }
 
-final NotifierProvider<BootstrapController, BootstrapProgress> bootstrapProvider =
-    NotifierProvider<BootstrapController, BootstrapProgress>(
+final NotifierProvider<BootstrapController, BootstrapProgress>
+bootstrapProvider = NotifierProvider<BootstrapController, BootstrapProgress>(
   BootstrapController.new,
 );

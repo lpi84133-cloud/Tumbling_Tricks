@@ -102,14 +102,9 @@ class RingGate extends StatefulWidget {
 }
 
 class _RingGateState extends State<RingGate> with TickerProviderStateMixin {
-  /// Phase 1 (LaunchScreen) capped the visible bar at 30% before it handed
-  /// off to the offline view; this phase continues from that exact point so
-  /// the two feel like one uninterrupted progression.
-  static const double _from = 0.30;
-
-  /// Reserve the last 5% for the moment the coordinator returns, so the bar
-  /// never sits at "99% waiting" for a decision that has already landed.
-  static const double _crawlTo = 0.95;
+  static const Duration _crawlDuration = Duration(seconds: 5);
+  static const Duration _finishDuration = Duration(milliseconds: 320);
+  static const double _crawlTo = 0.80;
   static const double _finalTo = 1.0;
 
   late final AnimationController _crawl;
@@ -120,21 +115,19 @@ class _RingGateState extends State<RingGate> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // A slow, steady walk from 30% to 95% — long enough to cover the network
-    // round-trip on a slow connection, short enough not to feel stalled if
-    // the resolve returns immediately.
+    // Same rhythm as [LaunchScreen]: 0 → 80% over five seconds, hold there
+    // until the coordinator returns, then sweep to 100% in a short tween.
+    // The user reads Retry as the launch bar starting over rather than a
+    // separate loader.
     _crawl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 6),
-      lowerBound: _from,
+      duration: _crawlDuration,
+      lowerBound: 0,
       upperBound: _crawlTo,
-      value: _from,
     )..forward();
-    // A quick final sweep from wherever the crawl was to 100% once the
-    // decision is in hand.
     _finish = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 360),
+      duration: _finishDuration,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => _resolve());
   }

@@ -78,21 +78,19 @@ Future<void> main() async {
     runtimeEnabled: MarqueeConfig.gateReady,
   );
 
-  // Pre-flight offline check for a first-time gray candidate.
-  //
-  // The launch progress bar is honest: it reflects real work being done. When
-  // the gate is enabled, the route is still undecided (i.e. this is the very
-  // first launch that would resolve gray-vs-native) and the device has no
-  // network interface at all, the pipeline is guaranteed to end at
-  // [OfflineStage] no matter how long the bar runs. Recording that decision
-  // up front lets the launch screen skip the bar entirely and hand straight
-  // over to the offline view, so the user isn't shown a run to 100% that is
-  // going to reveal a "no connection" screen anyway. Only [hasInterface] is
-  // consulted here — no DNS, no timeouts — so the check is cheap and cannot
-  // block launch. Organic returning users (`route == native`) already skip
-  // network work in [RingCoordinator._returningNative], so nothing changes
-  // for them.
-  if (coordinator.enabled && vault.route == GateRoute.undecided) {
+  // Pre-flight offline check for any launch that needs the network to
+  // decide where to go — that's both the very first launch (undecided
+  // route) and returning portal launches. In both cases the pipeline needs
+  // a fresh backend answer, so with no interface the outcome is guaranteed
+  // to be [OfflineStage] and the launch screen can skip the bar entirely
+  // and hand straight over to the offline view. Only [hasInterface] is
+  // consulted here — no DNS, no timeouts — so the check is cheap and can
+  // never block launch. Organic returning users (`route == native`) do
+  // not run any network work at all in [RingCoordinator._returningNative],
+  // so nothing changes for them.
+  final needsNetworkForRouting = coordinator.enabled &&
+      (vault.route == GateRoute.undecided || vault.route == GateRoute.portal);
+  if (needsNetworkForRouting) {
     try {
       if (!await probe.hasInterface()) {
         coordinator.outcome = const OfflineStage();
