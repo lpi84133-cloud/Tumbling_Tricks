@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/bootstrap.dart';
 import '../../design/design.dart';
+import '../../ringside/core/relay_models.dart';
+import '../../ringside/ring_gate.dart';
 
 /// The launch screen.
 ///
@@ -23,9 +25,18 @@ class LaunchScreen extends ConsumerStatefulWidget {
 class _LaunchScreenState extends ConsumerState<LaunchScreen> {
   bool _handedOver = false;
 
+  /// True when the gray pre-flight in `main.dart` already decided this launch
+  /// is going to end at the offline view. In that case the progress bar and
+  /// its caption are hidden — the user sees only the splash artwork until the
+  /// bootstrap steps finish (still needed for DB, prefs, warmed assets), so
+  /// the "no connection" screen appears without a run to 100% first.
+  bool _preflightOffline = false;
+
   @override
   void initState() {
     super.initState();
+    _preflightOffline =
+        ref.read(ringCoordinatorProvider)?.outcome is OfflineStage;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(bootstrapProvider.notifier).start(context);
     });
@@ -73,33 +84,43 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
               ),
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isLandscape ? Layout.pageInset * 3 : Layout.pageInset,
-                vertical: Gap.xl,
-              ),
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: Layout.maxContentWidth),
-                  child: progress.hasError
-                      ? _LaunchFailure(
-                          onRetry: () {
-                            ref.invalidate(bootstrapProvider);
-                            setState(() => _handedOver = false);
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                ref.read(bootstrapProvider.notifier).start(context);
-                              }
-                            });
-                          },
-                        )
-                      : _LaunchProgress(progress: progress),
+          // When pre-flight has already pinned this launch to the offline
+          // view, the progress bar is suppressed — showing the bar tick up
+          // to 100% only to reveal a "no connection" screen would mislead
+          // the user. The bootstrap steps still run in the background so
+          // the DB, preferences and warmed assets are ready by the time
+          // OfflineView's Retry or Skip is used.
+          if (!_preflightOffline)
+            SafeArea(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isLandscape ? Layout.pageInset * 3 : Layout.pageInset,
+                  vertical: Gap.xl,
+                ),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: Layout.maxContentWidth),
+                    child: progress.hasError
+                        ? _LaunchFailure(
+                            onRetry: () {
+                              ref.invalidate(bootstrapProvider);
+                              setState(() => _handedOver = false);
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) {
+                                  ref
+                                      .read(bootstrapProvider.notifier)
+                                      .start(context);
+                                }
+                              });
+                            },
+                          )
+                        : _LaunchProgress(progress: progress),
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

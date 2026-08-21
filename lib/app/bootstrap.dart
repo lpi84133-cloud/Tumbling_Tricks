@@ -219,6 +219,12 @@ class BootstrapController extends Notifier<BootstrapProgress> {
           coordinator?.outcome = const NativeStage();
           return;
         }
+        // Honour the pre-flight decision made in `main.dart`: on a first-time
+        // gray candidate with no network interface the outcome is already
+        // pinned to [OfflineStage] and there is nothing gray-side left to do.
+        // Running the pipeline anyway would only add a DNS timeout to a
+        // decision that has already been made.
+        if (coordinator.outcome != null) return;
         try {
           coordinator.outcome = await coordinator.resolve();
         } catch (_) {
