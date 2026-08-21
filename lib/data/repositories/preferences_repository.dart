@@ -52,6 +52,25 @@ class PreferencesRepository {
     );
   }
 
+  /// Updates the daily showtime nudge.
+  ///
+  /// Independent of [setReminder]: the two reminders answer different
+  /// questions (a rehearsal schedule vs. a once-a-day nudge) and are stored,
+  /// scheduled and cancelled on their own tracks.
+  Future<void> setDailyReminder({
+    required bool enabled,
+    required int hour,
+    required int minute,
+  }) {
+    return _write(
+      AppPreferencesCompanion(
+        dailyReminderEnabled: Value<bool>(enabled),
+        dailyReminderHour: Value<int>(hour.clamp(0, 23)),
+        dailyReminderMinute: Value<int>(minute.clamp(0, 59)),
+      ),
+    );
+  }
+
   Future<void> _write(AppPreferencesCompanion values) =>
       (_db.update(_db.appPreferences)..where((AppPreferences t) => t.id.equals(1)))
           .write(values);

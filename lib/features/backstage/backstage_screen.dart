@@ -13,6 +13,7 @@ import '../../design/design.dart';
 import '../../design/enum_art.dart';
 import '../shared/page_frame.dart';
 import '../shared/sheet_shell.dart';
+import 'daily_reminder_card.dart';
 import 'data_export.dart';
 import 'profile_photo_store.dart';
 import 'reminder_card.dart';
@@ -290,6 +291,8 @@ class _BackstageScreenState extends ConsumerState<BackstageScreen> {
                 ),
                 Gap.vMd,
                 const ReminderCard(),
+                Gap.vMd,
+                const DailyReminderCard(),
               ],
             ),
           ),

@@ -44,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   static const int _singletonId = 1;
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -59,6 +59,13 @@ class AppDatabase extends _$AppDatabase {
         if (from < 2) {
           await m.addColumn(tricks, tricks.masteryDecayedAt);
           await m.addColumn(appPreferences, appPreferences.decayEnabled);
+        }
+        // v2 → v3 adds the daily-reminder columns. Existing rows land on the
+        // defaults (off, 09:00), so the switch reads correctly on first open.
+        if (from < 3) {
+          await m.addColumn(appPreferences, appPreferences.dailyReminderEnabled);
+          await m.addColumn(appPreferences, appPreferences.dailyReminderHour);
+          await m.addColumn(appPreferences, appPreferences.dailyReminderMinute);
         }
       },
       beforeOpen: (OpeningDetails details) async {
