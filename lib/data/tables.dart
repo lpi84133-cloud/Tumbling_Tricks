@@ -285,6 +285,21 @@ class AppPreferences extends Table {
   /// Bit per ISO weekday, bit 0 = Monday. Defaults to every day.
   IntColumn get reminderWeekdayMask => integer().withDefault(const Constant(0x7F))();
 
+  /// Daily nudge, independent of the weekly rehearsal reminder above.
+  ///
+  /// Kept as its own set of columns rather than reused because the two
+  /// reminders answer different questions: the weekly one is a rehearsal
+  /// schedule, the daily one is a simple showtime nudge with a rotating
+  /// message. They can be on or off independently.
+  BoolColumn get dailyReminderEnabled =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get dailyReminderHour => integer()
+      .check(dailyReminderHour.isBetweenValues(0, 23))
+      .withDefault(const Constant(9))();
+  IntColumn get dailyReminderMinute => integer()
+      .check(dailyReminderMinute.isBetweenValues(0, 59))
+      .withDefault(const Constant(0))();
+
   BoolColumn get onboardingCompleted => boolean().withDefault(const Constant(false))();
 
   /// Revision of the bundled trick catalogue already merged into `tricks`.

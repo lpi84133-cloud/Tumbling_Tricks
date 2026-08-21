@@ -5569,6 +5569,45 @@ class $AppPreferencesTable extends AppPreferences
     requiredDuringInsert: false,
     defaultValue: const Constant(0x7F),
   );
+  static const VerificationMeta _dailyReminderEnabledMeta =
+      const VerificationMeta('dailyReminderEnabled');
+  @override
+  late final GeneratedColumn<bool> dailyReminderEnabled = GeneratedColumn<bool>(
+    'daily_reminder_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("daily_reminder_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _dailyReminderHourMeta = const VerificationMeta(
+    'dailyReminderHour',
+  );
+  @override
+  late final GeneratedColumn<int> dailyReminderHour = GeneratedColumn<int>(
+    'daily_reminder_hour',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(dailyReminderHour).isBetweenValues(0, 23),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(9),
+  );
+  static const VerificationMeta _dailyReminderMinuteMeta =
+      const VerificationMeta('dailyReminderMinute');
+  @override
+  late final GeneratedColumn<int> dailyReminderMinute = GeneratedColumn<int>(
+    'daily_reminder_minute',
+    aliasedName,
+    false,
+    check: () => ComparableExpr(dailyReminderMinute).isBetweenValues(0, 59),
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _onboardingCompletedMeta =
       const VerificationMeta('onboardingCompleted');
   @override
@@ -5630,6 +5669,9 @@ class $AppPreferencesTable extends AppPreferences
     reminderHour,
     reminderMinute,
     reminderWeekdayMask,
+    dailyReminderEnabled,
+    dailyReminderHour,
+    dailyReminderMinute,
     onboardingCompleted,
     catalogRevision,
     defaultTargetSeconds,
@@ -5701,6 +5743,33 @@ class $AppPreferencesTable extends AppPreferences
         reminderWeekdayMask.isAcceptableOrUnknown(
           data['reminder_weekday_mask']!,
           _reminderWeekdayMaskMeta,
+        ),
+      );
+    }
+    if (data.containsKey('daily_reminder_enabled')) {
+      context.handle(
+        _dailyReminderEnabledMeta,
+        dailyReminderEnabled.isAcceptableOrUnknown(
+          data['daily_reminder_enabled']!,
+          _dailyReminderEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('daily_reminder_hour')) {
+      context.handle(
+        _dailyReminderHourMeta,
+        dailyReminderHour.isAcceptableOrUnknown(
+          data['daily_reminder_hour']!,
+          _dailyReminderHourMeta,
+        ),
+      );
+    }
+    if (data.containsKey('daily_reminder_minute')) {
+      context.handle(
+        _dailyReminderMinuteMeta,
+        dailyReminderMinute.isAcceptableOrUnknown(
+          data['daily_reminder_minute']!,
+          _dailyReminderMinuteMeta,
         ),
       );
     }
@@ -5777,6 +5846,18 @@ class $AppPreferencesTable extends AppPreferences
         DriftSqlType.int,
         data['${effectivePrefix}reminder_weekday_mask'],
       )!,
+      dailyReminderEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}daily_reminder_enabled'],
+      )!,
+      dailyReminderHour: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}daily_reminder_hour'],
+      )!,
+      dailyReminderMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}daily_reminder_minute'],
+      )!,
       onboardingCompleted: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}onboarding_completed'],
@@ -5813,6 +5894,16 @@ class AppPreferenceRow extends DataClass
 
   /// Bit per ISO weekday, bit 0 = Monday. Defaults to every day.
   final int reminderWeekdayMask;
+
+  /// Daily nudge, independent of the weekly rehearsal reminder above.
+  ///
+  /// Kept as its own set of columns rather than reused because the two
+  /// reminders answer different questions: the weekly one is a rehearsal
+  /// schedule, the daily one is a simple showtime nudge with a rotating
+  /// message. They can be on or off independently.
+  final bool dailyReminderEnabled;
+  final int dailyReminderHour;
+  final int dailyReminderMinute;
   final bool onboardingCompleted;
 
   /// Revision of the bundled trick catalogue already merged into `tricks`.
@@ -5833,6 +5924,9 @@ class AppPreferenceRow extends DataClass
     required this.reminderHour,
     required this.reminderMinute,
     required this.reminderWeekdayMask,
+    required this.dailyReminderEnabled,
+    required this.dailyReminderHour,
+    required this.dailyReminderMinute,
     required this.onboardingCompleted,
     required this.catalogRevision,
     required this.defaultTargetSeconds,
@@ -5848,6 +5942,9 @@ class AppPreferenceRow extends DataClass
     map['reminder_hour'] = Variable<int>(reminderHour);
     map['reminder_minute'] = Variable<int>(reminderMinute);
     map['reminder_weekday_mask'] = Variable<int>(reminderWeekdayMask);
+    map['daily_reminder_enabled'] = Variable<bool>(dailyReminderEnabled);
+    map['daily_reminder_hour'] = Variable<int>(dailyReminderHour);
+    map['daily_reminder_minute'] = Variable<int>(dailyReminderMinute);
     map['onboarding_completed'] = Variable<bool>(onboardingCompleted);
     map['catalog_revision'] = Variable<int>(catalogRevision);
     map['default_target_seconds'] = Variable<int>(defaultTargetSeconds);
@@ -5864,6 +5961,9 @@ class AppPreferenceRow extends DataClass
       reminderHour: Value(reminderHour),
       reminderMinute: Value(reminderMinute),
       reminderWeekdayMask: Value(reminderWeekdayMask),
+      dailyReminderEnabled: Value(dailyReminderEnabled),
+      dailyReminderHour: Value(dailyReminderHour),
+      dailyReminderMinute: Value(dailyReminderMinute),
       onboardingCompleted: Value(onboardingCompleted),
       catalogRevision: Value(catalogRevision),
       defaultTargetSeconds: Value(defaultTargetSeconds),
@@ -5886,6 +5986,13 @@ class AppPreferenceRow extends DataClass
       reminderWeekdayMask: serializer.fromJson<int>(
         json['reminderWeekdayMask'],
       ),
+      dailyReminderEnabled: serializer.fromJson<bool>(
+        json['dailyReminderEnabled'],
+      ),
+      dailyReminderHour: serializer.fromJson<int>(json['dailyReminderHour']),
+      dailyReminderMinute: serializer.fromJson<int>(
+        json['dailyReminderMinute'],
+      ),
       onboardingCompleted: serializer.fromJson<bool>(
         json['onboardingCompleted'],
       ),
@@ -5907,6 +6014,9 @@ class AppPreferenceRow extends DataClass
       'reminderHour': serializer.toJson<int>(reminderHour),
       'reminderMinute': serializer.toJson<int>(reminderMinute),
       'reminderWeekdayMask': serializer.toJson<int>(reminderWeekdayMask),
+      'dailyReminderEnabled': serializer.toJson<bool>(dailyReminderEnabled),
+      'dailyReminderHour': serializer.toJson<int>(dailyReminderHour),
+      'dailyReminderMinute': serializer.toJson<int>(dailyReminderMinute),
       'onboardingCompleted': serializer.toJson<bool>(onboardingCompleted),
       'catalogRevision': serializer.toJson<int>(catalogRevision),
       'defaultTargetSeconds': serializer.toJson<int>(defaultTargetSeconds),
@@ -5922,6 +6032,9 @@ class AppPreferenceRow extends DataClass
     int? reminderHour,
     int? reminderMinute,
     int? reminderWeekdayMask,
+    bool? dailyReminderEnabled,
+    int? dailyReminderHour,
+    int? dailyReminderMinute,
     bool? onboardingCompleted,
     int? catalogRevision,
     int? defaultTargetSeconds,
@@ -5934,6 +6047,9 @@ class AppPreferenceRow extends DataClass
     reminderHour: reminderHour ?? this.reminderHour,
     reminderMinute: reminderMinute ?? this.reminderMinute,
     reminderWeekdayMask: reminderWeekdayMask ?? this.reminderWeekdayMask,
+    dailyReminderEnabled: dailyReminderEnabled ?? this.dailyReminderEnabled,
+    dailyReminderHour: dailyReminderHour ?? this.dailyReminderHour,
+    dailyReminderMinute: dailyReminderMinute ?? this.dailyReminderMinute,
     onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     catalogRevision: catalogRevision ?? this.catalogRevision,
     defaultTargetSeconds: defaultTargetSeconds ?? this.defaultTargetSeconds,
@@ -5960,6 +6076,15 @@ class AppPreferenceRow extends DataClass
       reminderWeekdayMask: data.reminderWeekdayMask.present
           ? data.reminderWeekdayMask.value
           : this.reminderWeekdayMask,
+      dailyReminderEnabled: data.dailyReminderEnabled.present
+          ? data.dailyReminderEnabled.value
+          : this.dailyReminderEnabled,
+      dailyReminderHour: data.dailyReminderHour.present
+          ? data.dailyReminderHour.value
+          : this.dailyReminderHour,
+      dailyReminderMinute: data.dailyReminderMinute.present
+          ? data.dailyReminderMinute.value
+          : this.dailyReminderMinute,
       onboardingCompleted: data.onboardingCompleted.present
           ? data.onboardingCompleted.value
           : this.onboardingCompleted,
@@ -5985,6 +6110,9 @@ class AppPreferenceRow extends DataClass
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
           ..write('reminderWeekdayMask: $reminderWeekdayMask, ')
+          ..write('dailyReminderEnabled: $dailyReminderEnabled, ')
+          ..write('dailyReminderHour: $dailyReminderHour, ')
+          ..write('dailyReminderMinute: $dailyReminderMinute, ')
           ..write('onboardingCompleted: $onboardingCompleted, ')
           ..write('catalogRevision: $catalogRevision, ')
           ..write('defaultTargetSeconds: $defaultTargetSeconds, ')
@@ -6002,6 +6130,9 @@ class AppPreferenceRow extends DataClass
     reminderHour,
     reminderMinute,
     reminderWeekdayMask,
+    dailyReminderEnabled,
+    dailyReminderHour,
+    dailyReminderMinute,
     onboardingCompleted,
     catalogRevision,
     defaultTargetSeconds,
@@ -6018,6 +6149,9 @@ class AppPreferenceRow extends DataClass
           other.reminderHour == this.reminderHour &&
           other.reminderMinute == this.reminderMinute &&
           other.reminderWeekdayMask == this.reminderWeekdayMask &&
+          other.dailyReminderEnabled == this.dailyReminderEnabled &&
+          other.dailyReminderHour == this.dailyReminderHour &&
+          other.dailyReminderMinute == this.dailyReminderMinute &&
           other.onboardingCompleted == this.onboardingCompleted &&
           other.catalogRevision == this.catalogRevision &&
           other.defaultTargetSeconds == this.defaultTargetSeconds &&
@@ -6032,6 +6166,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
   final Value<int> reminderHour;
   final Value<int> reminderMinute;
   final Value<int> reminderWeekdayMask;
+  final Value<bool> dailyReminderEnabled;
+  final Value<int> dailyReminderHour;
+  final Value<int> dailyReminderMinute;
   final Value<bool> onboardingCompleted;
   final Value<int> catalogRevision;
   final Value<int> defaultTargetSeconds;
@@ -6044,6 +6181,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
     this.reminderWeekdayMask = const Value.absent(),
+    this.dailyReminderEnabled = const Value.absent(),
+    this.dailyReminderHour = const Value.absent(),
+    this.dailyReminderMinute = const Value.absent(),
     this.onboardingCompleted = const Value.absent(),
     this.catalogRevision = const Value.absent(),
     this.defaultTargetSeconds = const Value.absent(),
@@ -6057,6 +6197,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     this.reminderHour = const Value.absent(),
     this.reminderMinute = const Value.absent(),
     this.reminderWeekdayMask = const Value.absent(),
+    this.dailyReminderEnabled = const Value.absent(),
+    this.dailyReminderHour = const Value.absent(),
+    this.dailyReminderMinute = const Value.absent(),
     this.onboardingCompleted = const Value.absent(),
     this.catalogRevision = const Value.absent(),
     this.defaultTargetSeconds = const Value.absent(),
@@ -6070,6 +6213,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     Expression<int>? reminderHour,
     Expression<int>? reminderMinute,
     Expression<int>? reminderWeekdayMask,
+    Expression<bool>? dailyReminderEnabled,
+    Expression<int>? dailyReminderHour,
+    Expression<int>? dailyReminderMinute,
     Expression<bool>? onboardingCompleted,
     Expression<int>? catalogRevision,
     Expression<int>? defaultTargetSeconds,
@@ -6084,6 +6230,11 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
       if (reminderMinute != null) 'reminder_minute': reminderMinute,
       if (reminderWeekdayMask != null)
         'reminder_weekday_mask': reminderWeekdayMask,
+      if (dailyReminderEnabled != null)
+        'daily_reminder_enabled': dailyReminderEnabled,
+      if (dailyReminderHour != null) 'daily_reminder_hour': dailyReminderHour,
+      if (dailyReminderMinute != null)
+        'daily_reminder_minute': dailyReminderMinute,
       if (onboardingCompleted != null)
         'onboarding_completed': onboardingCompleted,
       if (catalogRevision != null) 'catalog_revision': catalogRevision,
@@ -6101,6 +6252,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     Value<int>? reminderHour,
     Value<int>? reminderMinute,
     Value<int>? reminderWeekdayMask,
+    Value<bool>? dailyReminderEnabled,
+    Value<int>? dailyReminderHour,
+    Value<int>? dailyReminderMinute,
     Value<bool>? onboardingCompleted,
     Value<int>? catalogRevision,
     Value<int>? defaultTargetSeconds,
@@ -6114,6 +6268,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
       reminderWeekdayMask: reminderWeekdayMask ?? this.reminderWeekdayMask,
+      dailyReminderEnabled: dailyReminderEnabled ?? this.dailyReminderEnabled,
+      dailyReminderHour: dailyReminderHour ?? this.dailyReminderHour,
+      dailyReminderMinute: dailyReminderMinute ?? this.dailyReminderMinute,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       catalogRevision: catalogRevision ?? this.catalogRevision,
       defaultTargetSeconds: defaultTargetSeconds ?? this.defaultTargetSeconds,
@@ -6145,6 +6302,17 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     if (reminderWeekdayMask.present) {
       map['reminder_weekday_mask'] = Variable<int>(reminderWeekdayMask.value);
     }
+    if (dailyReminderEnabled.present) {
+      map['daily_reminder_enabled'] = Variable<bool>(
+        dailyReminderEnabled.value,
+      );
+    }
+    if (dailyReminderHour.present) {
+      map['daily_reminder_hour'] = Variable<int>(dailyReminderHour.value);
+    }
+    if (dailyReminderMinute.present) {
+      map['daily_reminder_minute'] = Variable<int>(dailyReminderMinute.value);
+    }
     if (onboardingCompleted.present) {
       map['onboarding_completed'] = Variable<bool>(onboardingCompleted.value);
     }
@@ -6170,6 +6338,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
           ..write('reminderHour: $reminderHour, ')
           ..write('reminderMinute: $reminderMinute, ')
           ..write('reminderWeekdayMask: $reminderWeekdayMask, ')
+          ..write('dailyReminderEnabled: $dailyReminderEnabled, ')
+          ..write('dailyReminderHour: $dailyReminderHour, ')
+          ..write('dailyReminderMinute: $dailyReminderMinute, ')
           ..write('onboardingCompleted: $onboardingCompleted, ')
           ..write('catalogRevision: $catalogRevision, ')
           ..write('defaultTargetSeconds: $defaultTargetSeconds, ')
@@ -10364,6 +10535,9 @@ typedef $$AppPreferencesTableCreateCompanionBuilder =
       Value<int> reminderHour,
       Value<int> reminderMinute,
       Value<int> reminderWeekdayMask,
+      Value<bool> dailyReminderEnabled,
+      Value<int> dailyReminderHour,
+      Value<int> dailyReminderMinute,
       Value<bool> onboardingCompleted,
       Value<int> catalogRevision,
       Value<int> defaultTargetSeconds,
@@ -10378,6 +10552,9 @@ typedef $$AppPreferencesTableUpdateCompanionBuilder =
       Value<int> reminderHour,
       Value<int> reminderMinute,
       Value<int> reminderWeekdayMask,
+      Value<bool> dailyReminderEnabled,
+      Value<int> dailyReminderHour,
+      Value<int> dailyReminderMinute,
       Value<bool> onboardingCompleted,
       Value<int> catalogRevision,
       Value<int> defaultTargetSeconds,
@@ -10425,6 +10602,21 @@ class $$AppPreferencesTableFilterComposer
 
   ColumnFilters<int> get reminderWeekdayMask => $composableBuilder(
     column: $table.reminderWeekdayMask,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dailyReminderEnabled => $composableBuilder(
+    column: $table.dailyReminderEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dailyReminderHour => $composableBuilder(
+    column: $table.dailyReminderHour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dailyReminderMinute => $composableBuilder(
+    column: $table.dailyReminderMinute,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10493,6 +10685,21 @@ class $$AppPreferencesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get dailyReminderEnabled => $composableBuilder(
+    column: $table.dailyReminderEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dailyReminderHour => $composableBuilder(
+    column: $table.dailyReminderHour,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dailyReminderMinute => $composableBuilder(
+    column: $table.dailyReminderMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get onboardingCompleted => $composableBuilder(
     column: $table.onboardingCompleted,
     builder: (column) => ColumnOrderings(column),
@@ -10553,6 +10760,21 @@ class $$AppPreferencesTableAnnotationComposer
 
   GeneratedColumn<int> get reminderWeekdayMask => $composableBuilder(
     column: $table.reminderWeekdayMask,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get dailyReminderEnabled => $composableBuilder(
+    column: $table.dailyReminderEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dailyReminderHour => $composableBuilder(
+    column: $table.dailyReminderHour,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dailyReminderMinute => $composableBuilder(
+    column: $table.dailyReminderMinute,
     builder: (column) => column,
   );
 
@@ -10621,6 +10843,9 @@ class $$AppPreferencesTableTableManager
                 Value<int> reminderHour = const Value.absent(),
                 Value<int> reminderMinute = const Value.absent(),
                 Value<int> reminderWeekdayMask = const Value.absent(),
+                Value<bool> dailyReminderEnabled = const Value.absent(),
+                Value<int> dailyReminderHour = const Value.absent(),
+                Value<int> dailyReminderMinute = const Value.absent(),
                 Value<bool> onboardingCompleted = const Value.absent(),
                 Value<int> catalogRevision = const Value.absent(),
                 Value<int> defaultTargetSeconds = const Value.absent(),
@@ -10633,6 +10858,9 @@ class $$AppPreferencesTableTableManager
                 reminderHour: reminderHour,
                 reminderMinute: reminderMinute,
                 reminderWeekdayMask: reminderWeekdayMask,
+                dailyReminderEnabled: dailyReminderEnabled,
+                dailyReminderHour: dailyReminderHour,
+                dailyReminderMinute: dailyReminderMinute,
                 onboardingCompleted: onboardingCompleted,
                 catalogRevision: catalogRevision,
                 defaultTargetSeconds: defaultTargetSeconds,
@@ -10647,6 +10875,9 @@ class $$AppPreferencesTableTableManager
                 Value<int> reminderHour = const Value.absent(),
                 Value<int> reminderMinute = const Value.absent(),
                 Value<int> reminderWeekdayMask = const Value.absent(),
+                Value<bool> dailyReminderEnabled = const Value.absent(),
+                Value<int> dailyReminderHour = const Value.absent(),
+                Value<int> dailyReminderMinute = const Value.absent(),
                 Value<bool> onboardingCompleted = const Value.absent(),
                 Value<int> catalogRevision = const Value.absent(),
                 Value<int> defaultTargetSeconds = const Value.absent(),
@@ -10659,6 +10890,9 @@ class $$AppPreferencesTableTableManager
                 reminderHour: reminderHour,
                 reminderMinute: reminderMinute,
                 reminderWeekdayMask: reminderWeekdayMask,
+                dailyReminderEnabled: dailyReminderEnabled,
+                dailyReminderHour: dailyReminderHour,
+                dailyReminderMinute: dailyReminderMinute,
                 onboardingCompleted: onboardingCompleted,
                 catalogRevision: catalogRevision,
                 defaultTargetSeconds: defaultTargetSeconds,

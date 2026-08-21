@@ -29,6 +29,33 @@ class ReminderService {
 
   static const String _channelId = 'rehearsal_reminders';
 
+  /// A distinct, single id for the daily nudge — kept far from the weekly
+  /// range (4100..4106) and from any dynamic id Firebase Messaging might
+  /// generate. Firebase draws its ids from message hashes or `0`, and the
+  /// channel below is our own — so a push and a local nudge can never overlap.
+  static const int _dailyId = 6100;
+
+  /// A distinct channel, so the daily nudge shows up as its own line in the
+  /// system settings and never fights with the Firebase push channel that
+  /// other layers of the app may register.
+  static const String _dailyChannelId = 'daily_showtime';
+
+  /// A small pool of themed one-liners for the daily nudge. Picked by the day
+  /// of year so a run of days never repeats the same string, and the same
+  /// date always shows the same one — restarting the app cannot desync it.
+  static const List<String> _dailyLines = <String>[
+    'The house lights are dimming — five minutes with your act.',
+    'A single beat, drilled today, saves a fumble on stage.',
+    'Pick one trick. Run it clean. Log it.',
+    'The stage is quiet. What will you rehearse?',
+    'Reliable tricks stay reliable only because you keep them warm.',
+    'Curtain up — even a short run counts.',
+    'One rehearsal today keeps the ratings honest.',
+    'A quick pass through the opening beats.',
+    'The audience remembers the finale. Give it a minute.',
+    'Warm up the marquee — the day is still yours.',
+  ];
+
   Future<void> _ensureInitialised() async {
     if (_initialised) return;
 
@@ -72,11 +99,21 @@ class ReminderService {
   }
 
   /// Brings the scheduled notifications in line with the stored preferences.
+  ///
+  /// Reschedules both the weekly rehearsal reminder and the daily nudge, so a
+  /// single call from the launch bar catches every drift (device reboot, clock
+  /// change, timezone move) in one place.
   Future<void> sync() async {
     await _ensureInitialised();
 
-    final AppPreferenceRow prefs = await _ref.read(preferencesRepositoryProvider).read();
+    final AppPreferenceRow prefs =
+        await _ref.read(preferencesRepositoryProvider).read();
 
+    await _syncWeekly(prefs);
+    await _syncDaily(prefs);
+  }
+
+  Future<void> _syncWeekly(AppPreferenceRow prefs) async {
     for (int day = DateTime.monday; day <= DateTime.sunday; day++) {
       await _plugin.cancel(id: _idBase + day);
     }
@@ -91,7 +128,10 @@ class ReminderService {
         scheduledDate:
             _nextInstanceOf(weekday, prefs.reminderHour, prefs.reminderMinute),
         notificationDetails: const NotificationDetails(
-          iOS: DarwinNotificationDetails(),
+          iOS: DarwinNotificationDetails(
+            threadIdentifier: _channelId,
+            categoryIdentifier: _channelId,
+          ),
           android: AndroidNotificationDetails(
             _channelId,
             'Rehearsal reminders',
@@ -106,9 +146,85 @@ class ReminderService {
     }
   }
 
+  /// Schedules the daily showtime nudge.
+  ///
+  /// Owns exactly one notification id ([_dailyId]) and one channel
+  /// ([_dailyChannelId]); nothing else in the app writes to either, which is
+  /// what keeps this reminder from ever stepping on a Firebase push that a
+  /// paired layer may deliver on a different channel with a different id.
+  Future<void> _syncDaily(AppPreferenceRow prefs) async {
+    await _plugin.cancel(id: _dailyId);
+    if (!prefs.dailyReminderEnabled) return;
+
+    final tz.TZDateTime firstFire = _nextDailyTime(
+      prefs.dailyReminderHour,
+      prefs.dailyReminderMinute,
+    );
+    final String line = _pickDailyLine(firstFire);
+
+    await _plugin.zonedSchedule(
+      id: _dailyId,
+      title: 'Tumbling Tricks',
+      body: line,
+      scheduledDate: firstFire,
+      notificationDetails: const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: _dailyChannelId,
+          categoryIdentifier: _dailyChannelId,
+        ),
+        android: AndroidNotificationDetails(
+          _dailyChannelId,
+          'Daily showtime',
+          channelDescription:
+              'A once-a-day nudge from Tumbling Tricks at the time you chose.',
+          importance: Importance.defaultImportance,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // Repeats every day at the same wall-clock time.
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// Cancels every reminder this service owns.
+  ///
+  /// Deliberately cancels by id rather than calling `cancelAll`: the plugin's
+  /// blanket cancel would also nuke any notification another layer (e.g. a
+  /// Firebase Messaging setup) may have posted on the same device.
   Future<void> cancelAll() async {
     await _ensureInitialised();
-    await _plugin.cancelAll();
+    for (int day = DateTime.monday; day <= DateTime.sunday; day++) {
+      await _plugin.cancel(id: _idBase + day);
+    }
+    await _plugin.cancel(id: _dailyId);
+  }
+
+  /// Same-day at [hour]:[minute] when that is still in the future, otherwise
+  /// tomorrow at that time. Kept as its own helper so the daily nudge does
+  /// not accidentally slip a whole week forward via the weekly variant above.
+  static tz.TZDateTime _nextDailyTime(int hour, int minute) {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final tz.TZDateTime candidate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    return candidate.isAfter(now)
+        ? candidate
+        : candidate.add(const Duration(days: 1));
+  }
+
+  /// Picks a themed line by day of year so successive days rotate through the
+  /// pool rather than pinning to one string, and the same date always resolves
+  /// to the same line — the pool is deterministic, so a device reboot cannot
+  /// leave the user staring at the same message they saw yesterday.
+  static String _pickDailyLine(DateTime moment) {
+    final int dayOfYear =
+        moment.difference(DateTime(moment.year)).inDays;
+    return _dailyLines[dayOfYear % _dailyLines.length];
   }
 
   /// The next occurrence of [weekday] at [hour]:[minute], in local time.
