@@ -273,6 +273,18 @@ class _BackstageScreenState extends ConsumerState<BackstageScreen> {
                             .read(preferencesRepositoryProvider)
                             .setHapticsEnabled(enabled: value),
                       ),
+                      SwitchListTile(
+                        value: prefs?.decayEnabled ?? true,
+                        title: const Text('Skill decay'),
+                        subtitle: const Text(
+                          'Show-ready tricks drop to reliable after three '
+                          'weeks unrehearsed, reliable to drilling after a '
+                          'month. Turn off to keep ratings fixed.',
+                        ),
+                        onChanged: (bool value) => ref
+                            .read(preferencesRepositoryProvider)
+                            .setDecayEnabled(enabled: value),
+                      ),
                     ],
                   ),
                 ),

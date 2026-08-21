@@ -3,6 +3,44 @@ import 'package:drift/drift.dart';
 import '../app_database.dart';
 import '../enums.dart';
 
+/// One trick's downgrade during the launch decay pass.
+///
+/// A record rather than a class because these values never exist without one
+/// another and never mutate.
+typedef DecayEvent = ({
+  int trickId,
+  String name,
+  Mastery from,
+  Mastery to,
+  DateTime lastRehearsedAt,
+});
+
+/// The rules the decay pass runs.
+///
+/// Held as constants rather than magic numbers inside the query so a rule
+/// change is a one-line audit trail. `learning` is deliberately absent from
+/// the list of downgrades: it is already the bottom of the ladder.
+class DecayRules {
+  const DecayRules({
+    this.showReadyAfterDays = 21,
+    this.reliableAfterDays = 30,
+  });
+
+  final int showReadyAfterDays;
+  final int reliableAfterDays;
+
+  static const DecayRules standard = DecayRules();
+
+  Mastery? nextStep(Mastery current, DateTime lastRehearsedAt, DateTime now) {
+    final int days = now.difference(lastRehearsedAt).inDays;
+    return switch (current) {
+      Mastery.showReady when days >= showReadyAfterDays => Mastery.reliable,
+      Mastery.reliable when days >= reliableAfterDays => Mastery.drilling,
+      _ => null,
+    };
+  }
+}
+
 /// How much material a discipline holds and how far along it is.
 class DisciplineStats {
   const DisciplineStats({
@@ -200,9 +238,87 @@ class TrickRepository {
     return (_db.update(_db.tricks)..where((Tricks t) => t.id.equals(trickId))).write(
       TricksCompanion(
         mastery: Value<Mastery>(mastery),
+        // A manual rating overrides any pending decay marker: the user just
+        // said where the trick stands, so the atrophy timestamp is no longer
+        // the last thing to have moved it.
+        masteryDecayedAt: const Value<DateTime?>(null),
         updatedAt: Value<DateTime>(DateTime.now()),
       ),
     );
+  }
+
+  /// Runs the mastery-decay pass and returns the tricks that stepped down.
+  ///
+  /// Only Show-ready and Reliable ratings are affected; Drilling and Learning
+  /// are already low enough that further decay would be noise rather than
+  /// signal. Everything happens in a single transaction so a crash mid-pass
+  /// leaves either every affected row updated or none of them.
+  Future<List<DecayEvent>> applyMasteryDecay({
+    DecayRules rules = DecayRules.standard,
+    DateTime? now,
+  }) async {
+    final DateTime moment = now ?? DateTime.now();
+
+    return _db.transaction<List<DecayEvent>>(() async {
+      // The `mastery` column carries a type converter, which the raw table
+      // alias does not expose; going through `_db.tricks` keeps the comparison
+      // typed as the enum rather than the stored string.
+      final Expression<bool> masteryInScope =
+          _db.tricks.mastery.equalsValue(Mastery.showReady) |
+              _db.tricks.mastery.equalsValue(Mastery.reliable);
+
+      final List<TrickRow> candidates = await (_db.select(_db.tricks)
+            ..where((Tricks t) =>
+                t.isArchived.equals(false) &
+                t.lastRehearsedAt.isNotNull() &
+                masteryInScope))
+          .get();
+
+      final List<DecayEvent> events = <DecayEvent>[];
+
+      for (final TrickRow row in candidates) {
+        final DateTime? last = row.lastRehearsedAt;
+        if (last == null) continue;
+        final Mastery? next = rules.nextStep(row.mastery, last, moment);
+        if (next == null) continue;
+
+        events.add((
+          trickId: row.id,
+          name: row.name,
+          from: row.mastery,
+          to: next,
+          lastRehearsedAt: last,
+        ));
+
+        await (_db.update(_db.tricks)..where((Tricks t) => t.id.equals(row.id)))
+            .write(
+          TricksCompanion(
+            mastery: Value<Mastery>(next),
+            masteryDecayedAt: Value<DateTime?>(moment),
+            updatedAt: Value<DateTime>(moment),
+          ),
+        );
+      }
+
+      return events;
+    });
+  }
+
+  /// Tricks that decayed within the given window. Used by the Stage Console to
+  /// surface an "atrophied recently" list.
+  Stream<List<TrickRow>> watchRecentlyDecayed({
+    Duration window = const Duration(days: 7),
+    DateTime? now,
+  }) {
+    final DateTime cutoff = (now ?? DateTime.now()).subtract(window);
+    return (_db.select(_db.tricks)
+          ..where((Tricks t) =>
+              t.isArchived.equals(false) &
+              t.masteryDecayedAt.isBiggerOrEqualValue(cutoff))
+          ..orderBy(<OrderClauseGenerator<Tricks>>[
+            (Tricks t) => OrderingTerm.desc(t.masteryDecayedAt),
+          ]))
+        .watch();
   }
 
   /// Archiving is offered instead of deletion for catalogue entries, so the

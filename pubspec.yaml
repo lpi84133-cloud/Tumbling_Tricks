@@ -2,7 +2,7 @@ name: tumbling_tricks
 description: "Offline planner for stage performances: build acts, order tricks, track rehearsals."
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.12.2
@@ -46,6 +46,10 @@ dependencies:
   collection: ^1.19.1
   share_plus: ^13.3.0
   cupertino_icons: ^1.0.8
+
+  # Install-attribution SDK: reports whether a fresh install came from a
+  # OneLink campaign or was picked up organically from the App Store.
+  appsflyer_sdk: 6.17.9+1
 
 dev_dependencies:
   flutter_test:

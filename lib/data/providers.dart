@@ -145,6 +145,15 @@ final StreamProvider<List<DisciplineStats>> disciplineStatsProvider =
   (Ref ref) => ref.watch(trickRepositoryProvider).watchDisciplineStats(),
 );
 
+/// Tricks the decay pass dropped in the last week, freshest first.
+///
+/// Powers the Stage Console's "Atrophied recently" section: it appears only
+/// when the list is non-empty, so the console stays quiet on a healthy week.
+final StreamProvider<List<TrickRow>> recentlyDecayedProvider =
+    StreamProvider<List<TrickRow>>(
+  (Ref ref) => ref.watch(trickRepositoryProvider).watchRecentlyDecayed(),
+);
+
 // -------------------------------------------------------------------- progress
 
 final StreamProvider<List<RehearsalWeek>> weeklyRehearsalsProvider =
