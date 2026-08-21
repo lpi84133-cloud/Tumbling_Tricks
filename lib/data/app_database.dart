@@ -44,13 +44,22 @@ class AppDatabase extends _$AppDatabase {
   static const int _singletonId = 1;
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        // v1 → v2 adds the mastery-decay columns. Additive migrations, so any
+        // trick or preference row already in place carries its existing
+        // values across untouched.
+        if (from < 2) {
+          await m.addColumn(tricks, tricks.masteryDecayedAt);
+          await m.addColumn(appPreferences, appPreferences.decayEnabled);
+        }
       },
       beforeOpen: (OpeningDetails details) async {
         // Cascading deletes are what keep an act's blocks, run order, checklist,

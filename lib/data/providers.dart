@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_database.dart';
 import 'enums.dart';
+import 'models/act_report.dart';
 import 'models/act_summary.dart';
 import 'models/run_order.dart';
 import 'repositories/act_repository.dart';
@@ -78,6 +79,30 @@ final runOrderProvider = StreamProvider.family<RunOrder, int>(
   (Ref ref, int actId) => ref.watch(runOrderRepositoryProvider).watch(actId),
 );
 
+/// Structural analysis of an act's run order.
+///
+/// A [FutureProvider] rather than a [StreamProvider] because the trick catalogue
+/// is fetched by id once per rebuild; reactivity comes from watching the
+/// upstream stream providers, so the report is recomputed whenever the run
+/// order or the act summary changes.
+final actReportProvider = FutureProvider.family<ActReport, int>(
+  (Ref ref, int actId) async {
+    final RunOrder order = await ref.watch(runOrderProvider(actId).future);
+    final ActSummary? summary = await ref.watch(actSummaryProvider(actId).future);
+    if (summary == null) return ActReport.empty;
+
+    final Set<int> trickIds = <int>{
+      for (final RunOrderBlock block in order.blocks)
+        for (final RunOrderItemRow beat in block.beats)
+          if (beat.trickId != null) beat.trickId!,
+    };
+    final Map<int, TrickRow> tricks =
+        await ref.watch(trickRepositoryProvider).getByIds(trickIds);
+
+    return ActReport.from(runOrder: order, act: summary.act, tricks: tricks);
+  },
+);
+
 final checklistProvider = StreamProvider.family<List<ChecklistItemRow>, int>(
   (Ref ref, int actId) => ref.watch(preparationRepositoryProvider).watchChecklist(actId),
 );
@@ -118,6 +143,15 @@ final trickProvider = StreamProvider.family<TrickRow?, int>(
 final StreamProvider<List<DisciplineStats>> disciplineStatsProvider =
     StreamProvider<List<DisciplineStats>>(
   (Ref ref) => ref.watch(trickRepositoryProvider).watchDisciplineStats(),
+);
+
+/// Tricks the decay pass dropped in the last week, freshest first.
+///
+/// Powers the Stage Console's "Atrophied recently" section: it appears only
+/// when the list is non-empty, so the console stays quiet on a healthy week.
+final StreamProvider<List<TrickRow>> recentlyDecayedProvider =
+    StreamProvider<List<TrickRow>>(
+  (Ref ref) => ref.watch(trickRepositoryProvider).watchRecentlyDecayed(),
 );
 
 // -------------------------------------------------------------------- progress

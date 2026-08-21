@@ -5,9 +5,10 @@
 /// Flutter.
 library;
 
-import 'package:flutter/painting.dart';
+import 'package:flutter/material.dart';
 
 import '../data/enums.dart';
+import '../data/models/act_report.dart';
 import 'app_assets.dart';
 import 'palette.dart';
 
@@ -140,6 +141,26 @@ extension CueFrameStyleArt on CueFrameStyle {
     CueFrameStyle.tent => CueFrames.tent,
     CueFrameStyle.jester => CueFrames.jester,
     CueFrameStyle.stripes => CueFrames.stripes,
+  };
+}
+
+extension IssueSeverityArt on IssueSeverity {
+  String get label => switch (this) {
+    IssueSeverity.info => 'Info',
+    IssueSeverity.warning => 'Warning',
+    IssueSeverity.critical => 'Critical',
+  };
+
+  Color get tint => switch (this) {
+    IssueSeverity.info => Palette.brassDim,
+    IssueSeverity.warning => Palette.caution,
+    IssueSeverity.critical => Palette.danger,
+  };
+
+  IconData get icon => switch (this) {
+    IssueSeverity.info => Icons.info_outline_rounded,
+    IssueSeverity.warning => Icons.warning_amber_rounded,
+    IssueSeverity.critical => Icons.error_outline_rounded,
   };
 }
 

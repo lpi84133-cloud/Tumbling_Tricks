@@ -27,6 +27,9 @@ class PreferencesRepository {
     ),
   );
 
+  Future<void> setDecayEnabled({required bool enabled}) =>
+      _write(AppPreferencesCompanion(decayEnabled: Value<bool>(enabled)));
+
   /// Updates the rehearsal reminder.
   ///
   /// [weekdayMask] carries one bit per ISO weekday with bit 0 for Monday. An

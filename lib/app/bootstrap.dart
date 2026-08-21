@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,7 @@ import '../design/app_assets.dart';
 import '../design/typography.dart';
 import '../ringside/core/relay_models.dart';
 import '../ringside/ring_gate.dart';
+import 'analytics.dart';
 import 'feedback.dart';
 import 'reminders.dart';
 
@@ -156,6 +159,16 @@ class BootstrapController extends Notifier<BootstrapProgress> {
       }),
       _Step('Stocking the trick library', 0.12, (void Function(double) report) async {
         await ref.read(databaseProvider).mergeTrickCatalog();
+
+        // Runs the mastery-decay pass while the launch bar is still on
+        // screen. Cheap in practice — one indexed read plus a batched update
+        // — and doing it here means the console opens with the corrected
+        // ratings rather than blipping them a moment later.
+        final AppPreferenceRow prefs =
+            await ref.read(preferencesRepositoryProvider).read();
+        if (prefs.decayEnabled) {
+          await ref.read(trickRepositoryProvider).applyMasteryDecay();
+        }
       }),
       _Step('Hanging the scenery', 0.30, (void Function(double) report) async {
         // The only step big enough to report its own progress, and the reason
@@ -191,6 +204,10 @@ class BootstrapController extends Notifier<BootstrapProgress> {
         // Keeps the scheduled reminders in step with the stored preference in
         // case the app was reinstalled or the clock changed.
         await ref.read(reminderProvider).sync();
+        // Fires the install-attribution SDK without waiting for it to resolve.
+        // The postback lives on native side; blocking the launch bar on a
+        // network round-trip would be a lie.
+        unawaited(ref.read(attributionServiceProvider).initialize());
       }),
       _Step('Warming up the marquee', 0.15,
           (void Function(double) report) async {

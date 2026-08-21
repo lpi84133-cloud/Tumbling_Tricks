@@ -54,6 +54,12 @@ class Tricks extends Table {
   IntColumn get timesRehearsed => integer().withDefault(const Constant(0))();
   DateTimeColumn get lastRehearsedAt => dateTime().nullable()();
 
+  /// Set when the mastery decay pass most recently downgraded this trick.
+  /// Distinct from an explicit user rating so the "recently atrophied" list
+  /// on the Stage Console can single out decay events without also flagging
+  /// deliberate reclassifications.
+  DateTimeColumn get masteryDecayedAt => dateTime().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 }
@@ -286,6 +292,11 @@ class AppPreferences extends Table {
 
   /// Pre-filled target running time when creating a new act, in seconds.
   IntColumn get defaultTargetSeconds => integer().withDefault(const Constant(240))();
+
+  /// When on, the mastery-decay pass runs at launch: tricks not rehearsed for
+  /// long enough drop one notch, so an act that has been left alone loses
+  /// readiness without needing the user to relabel anything.
+  BoolColumn get decayEnabled => boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};

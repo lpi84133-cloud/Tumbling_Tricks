@@ -10,6 +10,7 @@ import '../../data/repositories/rehearsal_repository.dart';
 import '../../design/design.dart';
 import '../../design/enum_art.dart';
 import '../acts/new_act_sheet.dart';
+import '../library/trick_sheet.dart';
 import '../shared/act_widgets.dart';
 import '../shared/format.dart';
 import '../shared/page_frame.dart';
@@ -145,7 +146,108 @@ class _ConsoleBody extends ConsumerWidget {
               ),
             ),
         ],
+        const _AtrophySection(),
       ],
+    );
+  }
+}
+
+/// The tricks the decay pass dropped in the last week.
+///
+/// The whole section stays out of the tree when nothing has atrophied, so the
+/// console reads calm on a healthy week and only speaks up when there is
+/// actually something to say.
+class _AtrophySection extends ConsumerWidget {
+  const _AtrophySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<TrickRow> decayed =
+        ref.watch(recentlyDecayedProvider).value ?? const <TrickRow>[];
+    if (decayed.isEmpty) return const SizedBox.shrink();
+
+    final List<TrickRow> shown = decayed.take(5).toList(growable: false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Gap.vXl,
+        const SectionHeading(label: 'Atrophied this week'),
+        Gap.vMd,
+        PanelCard(
+          accent: Palette.caution,
+          padding: const EdgeInsets.symmetric(
+            horizontal: Gap.lg,
+            vertical: Gap.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                decayed.length == 1
+                    ? '1 trick dropped a step without a rehearsal.'
+                    : '${decayed.length} tricks dropped a step without a rehearsal.',
+                style: AppText.caption,
+              ),
+              Gap.vMd,
+              for (int i = 0; i < shown.length; i++) ...<Widget>[
+                if (i > 0) const Padding(
+                  padding: EdgeInsets.symmetric(vertical: Gap.xs),
+                  child: GoldRule(),
+                ),
+                _AtrophyRow(trick: shown[i]),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AtrophyRow extends StatelessWidget {
+  const _AtrophyRow({required this.trick});
+
+  final TrickRow trick;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => TrickSheet.open(context, trick.id),
+      borderRadius: Corners.chip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+        child: Row(
+          children: <Widget>[
+            Image.asset(trick.discipline.icon, height: 26),
+            Gap.hMd,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    trick.name,
+                    style: AppText.bodyStrong,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    trick.lastRehearsedAt == null
+                        ? 'now rated ${trick.mastery.label.toLowerCase()}'
+                        : 'now ${trick.mastery.label.toLowerCase()} — last ran '
+                            '${Fmt.relativeDay(trick.lastRehearsedAt!).toLowerCase()}',
+                    style: AppText.micro,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Gap.hSm,
+            Image.asset(trick.mastery.badge, height: 22),
+          ],
+        ),
+      ),
     );
   }
 }

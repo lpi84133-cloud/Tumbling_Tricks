@@ -45,7 +45,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Tumbling Tricks reads a photo from your library only when you pick a performer photo for your profile. The photo stays on this device.</string>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Your device identifier helps us understand which Tumbling Tricks campaigns bring performers to the app.</string>
+	<string>Tumbling Tricks uses an anonymous install identifier to measure how new users found the app, so we can improve which channels bring people to the planner. No personal data is shared.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

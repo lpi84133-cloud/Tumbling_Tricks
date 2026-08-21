@@ -176,6 +176,18 @@ class $TricksTable extends Tricks with TableInfo<$TricksTable, TrickRow> {
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _masteryDecayedAtMeta = const VerificationMeta(
+    'masteryDecayedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> masteryDecayedAt =
+      GeneratedColumn<DateTime>(
+        'mastery_decayed_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -214,6 +226,7 @@ class $TricksTable extends Tricks with TableInfo<$TricksTable, TrickRow> {
     isArchived,
     timesRehearsed,
     lastRehearsedAt,
+    masteryDecayedAt,
     createdAt,
     updatedAt,
   ];
@@ -309,6 +322,15 @@ class $TricksTable extends Tricks with TableInfo<$TricksTable, TrickRow> {
         ),
       );
     }
+    if (data.containsKey('mastery_decayed_at')) {
+      context.handle(
+        _masteryDecayedAtMeta,
+        masteryDecayedAt.isAcceptableOrUnknown(
+          data['mastery_decayed_at']!,
+          _masteryDecayedAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -394,6 +416,10 @@ class $TricksTable extends Tricks with TableInfo<$TricksTable, TrickRow> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_rehearsed_at'],
       ),
+      masteryDecayedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}mastery_decayed_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -444,6 +470,12 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
   final bool isArchived;
   final int timesRehearsed;
   final DateTime? lastRehearsedAt;
+
+  /// Set when the mastery decay pass most recently downgraded this trick.
+  /// Distinct from an explicit user rating so the "recently atrophied" list
+  /// on the Stage Console can single out decay events without also flagging
+  /// deliberate reclassifications.
+  final DateTime? masteryDecayedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const TrickRow({
@@ -461,6 +493,7 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
     required this.isArchived,
     required this.timesRehearsed,
     this.lastRehearsedAt,
+    this.masteryDecayedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -497,6 +530,9 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
     if (!nullToAbsent || lastRehearsedAt != null) {
       map['last_rehearsed_at'] = Variable<DateTime>(lastRehearsedAt);
     }
+    if (!nullToAbsent || masteryDecayedAt != null) {
+      map['mastery_decayed_at'] = Variable<DateTime>(masteryDecayedAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -524,6 +560,9 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
       lastRehearsedAt: lastRehearsedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastRehearsedAt),
+      masteryDecayedAt: masteryDecayedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(masteryDecayedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -553,6 +592,9 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       timesRehearsed: serializer.fromJson<int>(json['timesRehearsed']),
       lastRehearsedAt: serializer.fromJson<DateTime?>(json['lastRehearsedAt']),
+      masteryDecayedAt: serializer.fromJson<DateTime?>(
+        json['masteryDecayedAt'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -579,6 +621,7 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
       'isArchived': serializer.toJson<bool>(isArchived),
       'timesRehearsed': serializer.toJson<int>(timesRehearsed),
       'lastRehearsedAt': serializer.toJson<DateTime?>(lastRehearsedAt),
+      'masteryDecayedAt': serializer.toJson<DateTime?>(masteryDecayedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -599,6 +642,7 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
     bool? isArchived,
     int? timesRehearsed,
     Value<DateTime?> lastRehearsedAt = const Value.absent(),
+    Value<DateTime?> masteryDecayedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => TrickRow(
@@ -618,6 +662,9 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
     lastRehearsedAt: lastRehearsedAt.present
         ? lastRehearsedAt.value
         : this.lastRehearsedAt,
+    masteryDecayedAt: masteryDecayedAt.present
+        ? masteryDecayedAt.value
+        : this.masteryDecayedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -651,6 +698,9 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
       lastRehearsedAt: data.lastRehearsedAt.present
           ? data.lastRehearsedAt.value
           : this.lastRehearsedAt,
+      masteryDecayedAt: data.masteryDecayedAt.present
+          ? data.masteryDecayedAt.value
+          : this.masteryDecayedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -673,6 +723,7 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
           ..write('isArchived: $isArchived, ')
           ..write('timesRehearsed: $timesRehearsed, ')
           ..write('lastRehearsedAt: $lastRehearsedAt, ')
+          ..write('masteryDecayedAt: $masteryDecayedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -695,6 +746,7 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
     isArchived,
     timesRehearsed,
     lastRehearsedAt,
+    masteryDecayedAt,
     createdAt,
     updatedAt,
   );
@@ -716,6 +768,7 @@ class TrickRow extends DataClass implements Insertable<TrickRow> {
           other.isArchived == this.isArchived &&
           other.timesRehearsed == this.timesRehearsed &&
           other.lastRehearsedAt == this.lastRehearsedAt &&
+          other.masteryDecayedAt == this.masteryDecayedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -735,6 +788,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
   final Value<bool> isArchived;
   final Value<int> timesRehearsed;
   final Value<DateTime?> lastRehearsedAt;
+  final Value<DateTime?> masteryDecayedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TricksCompanion({
@@ -752,6 +806,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
     this.isArchived = const Value.absent(),
     this.timesRehearsed = const Value.absent(),
     this.lastRehearsedAt = const Value.absent(),
+    this.masteryDecayedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -770,6 +825,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
     this.isArchived = const Value.absent(),
     this.timesRehearsed = const Value.absent(),
     this.lastRehearsedAt = const Value.absent(),
+    this.masteryDecayedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : name = Value(name),
@@ -791,6 +847,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
     Expression<bool>? isArchived,
     Expression<int>? timesRehearsed,
     Expression<DateTime>? lastRehearsedAt,
+    Expression<DateTime>? masteryDecayedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -809,6 +866,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
       if (isArchived != null) 'is_archived': isArchived,
       if (timesRehearsed != null) 'times_rehearsed': timesRehearsed,
       if (lastRehearsedAt != null) 'last_rehearsed_at': lastRehearsedAt,
+      if (masteryDecayedAt != null) 'mastery_decayed_at': masteryDecayedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -829,6 +887,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
     Value<bool>? isArchived,
     Value<int>? timesRehearsed,
     Value<DateTime?>? lastRehearsedAt,
+    Value<DateTime?>? masteryDecayedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -847,6 +906,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
       isArchived: isArchived ?? this.isArchived,
       timesRehearsed: timesRehearsed ?? this.timesRehearsed,
       lastRehearsedAt: lastRehearsedAt ?? this.lastRehearsedAt,
+      masteryDecayedAt: masteryDecayedAt ?? this.masteryDecayedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -901,6 +961,9 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
     if (lastRehearsedAt.present) {
       map['last_rehearsed_at'] = Variable<DateTime>(lastRehearsedAt.value);
     }
+    if (masteryDecayedAt.present) {
+      map['mastery_decayed_at'] = Variable<DateTime>(masteryDecayedAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -927,6 +990,7 @@ class TricksCompanion extends UpdateCompanion<TrickRow> {
           ..write('isArchived: $isArchived, ')
           ..write('timesRehearsed: $timesRehearsed, ')
           ..write('lastRehearsedAt: $lastRehearsedAt, ')
+          ..write('masteryDecayedAt: $masteryDecayedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -5542,6 +5606,21 @@ class $AppPreferencesTable extends AppPreferences
     requiredDuringInsert: false,
     defaultValue: const Constant(240),
   );
+  static const VerificationMeta _decayEnabledMeta = const VerificationMeta(
+    'decayEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> decayEnabled = GeneratedColumn<bool>(
+    'decay_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("decay_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5554,6 +5633,7 @@ class $AppPreferencesTable extends AppPreferences
     onboardingCompleted,
     catalogRevision,
     defaultTargetSeconds,
+    decayEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5651,6 +5731,15 @@ class $AppPreferencesTable extends AppPreferences
         ),
       );
     }
+    if (data.containsKey('decay_enabled')) {
+      context.handle(
+        _decayEnabledMeta,
+        decayEnabled.isAcceptableOrUnknown(
+          data['decay_enabled']!,
+          _decayEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5700,6 +5789,10 @@ class $AppPreferencesTable extends AppPreferences
         DriftSqlType.int,
         data['${effectivePrefix}default_target_seconds'],
       )!,
+      decayEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}decay_enabled'],
+      )!,
     );
   }
 
@@ -5727,6 +5820,11 @@ class AppPreferenceRow extends DataClass
 
   /// Pre-filled target running time when creating a new act, in seconds.
   final int defaultTargetSeconds;
+
+  /// When on, the mastery-decay pass runs at launch: tricks not rehearsed for
+  /// long enough drop one notch, so an act that has been left alone loses
+  /// readiness without needing the user to relabel anything.
+  final bool decayEnabled;
   const AppPreferenceRow({
     required this.id,
     required this.soundEnabled,
@@ -5738,6 +5836,7 @@ class AppPreferenceRow extends DataClass
     required this.onboardingCompleted,
     required this.catalogRevision,
     required this.defaultTargetSeconds,
+    required this.decayEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5752,6 +5851,7 @@ class AppPreferenceRow extends DataClass
     map['onboarding_completed'] = Variable<bool>(onboardingCompleted);
     map['catalog_revision'] = Variable<int>(catalogRevision);
     map['default_target_seconds'] = Variable<int>(defaultTargetSeconds);
+    map['decay_enabled'] = Variable<bool>(decayEnabled);
     return map;
   }
 
@@ -5767,6 +5867,7 @@ class AppPreferenceRow extends DataClass
       onboardingCompleted: Value(onboardingCompleted),
       catalogRevision: Value(catalogRevision),
       defaultTargetSeconds: Value(defaultTargetSeconds),
+      decayEnabled: Value(decayEnabled),
     );
   }
 
@@ -5792,6 +5893,7 @@ class AppPreferenceRow extends DataClass
       defaultTargetSeconds: serializer.fromJson<int>(
         json['defaultTargetSeconds'],
       ),
+      decayEnabled: serializer.fromJson<bool>(json['decayEnabled']),
     );
   }
   @override
@@ -5808,6 +5910,7 @@ class AppPreferenceRow extends DataClass
       'onboardingCompleted': serializer.toJson<bool>(onboardingCompleted),
       'catalogRevision': serializer.toJson<int>(catalogRevision),
       'defaultTargetSeconds': serializer.toJson<int>(defaultTargetSeconds),
+      'decayEnabled': serializer.toJson<bool>(decayEnabled),
     };
   }
 
@@ -5822,6 +5925,7 @@ class AppPreferenceRow extends DataClass
     bool? onboardingCompleted,
     int? catalogRevision,
     int? defaultTargetSeconds,
+    bool? decayEnabled,
   }) => AppPreferenceRow(
     id: id ?? this.id,
     soundEnabled: soundEnabled ?? this.soundEnabled,
@@ -5833,6 +5937,7 @@ class AppPreferenceRow extends DataClass
     onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     catalogRevision: catalogRevision ?? this.catalogRevision,
     defaultTargetSeconds: defaultTargetSeconds ?? this.defaultTargetSeconds,
+    decayEnabled: decayEnabled ?? this.decayEnabled,
   );
   AppPreferenceRow copyWithCompanion(AppPreferencesCompanion data) {
     return AppPreferenceRow(
@@ -5864,6 +5969,9 @@ class AppPreferenceRow extends DataClass
       defaultTargetSeconds: data.defaultTargetSeconds.present
           ? data.defaultTargetSeconds.value
           : this.defaultTargetSeconds,
+      decayEnabled: data.decayEnabled.present
+          ? data.decayEnabled.value
+          : this.decayEnabled,
     );
   }
 
@@ -5879,7 +5987,8 @@ class AppPreferenceRow extends DataClass
           ..write('reminderWeekdayMask: $reminderWeekdayMask, ')
           ..write('onboardingCompleted: $onboardingCompleted, ')
           ..write('catalogRevision: $catalogRevision, ')
-          ..write('defaultTargetSeconds: $defaultTargetSeconds')
+          ..write('defaultTargetSeconds: $defaultTargetSeconds, ')
+          ..write('decayEnabled: $decayEnabled')
           ..write(')'))
         .toString();
   }
@@ -5896,6 +6005,7 @@ class AppPreferenceRow extends DataClass
     onboardingCompleted,
     catalogRevision,
     defaultTargetSeconds,
+    decayEnabled,
   );
   @override
   bool operator ==(Object other) =>
@@ -5910,7 +6020,8 @@ class AppPreferenceRow extends DataClass
           other.reminderWeekdayMask == this.reminderWeekdayMask &&
           other.onboardingCompleted == this.onboardingCompleted &&
           other.catalogRevision == this.catalogRevision &&
-          other.defaultTargetSeconds == this.defaultTargetSeconds);
+          other.defaultTargetSeconds == this.defaultTargetSeconds &&
+          other.decayEnabled == this.decayEnabled);
 }
 
 class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
@@ -5924,6 +6035,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
   final Value<bool> onboardingCompleted;
   final Value<int> catalogRevision;
   final Value<int> defaultTargetSeconds;
+  final Value<bool> decayEnabled;
   const AppPreferencesCompanion({
     this.id = const Value.absent(),
     this.soundEnabled = const Value.absent(),
@@ -5935,6 +6047,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     this.onboardingCompleted = const Value.absent(),
     this.catalogRevision = const Value.absent(),
     this.defaultTargetSeconds = const Value.absent(),
+    this.decayEnabled = const Value.absent(),
   });
   AppPreferencesCompanion.insert({
     this.id = const Value.absent(),
@@ -5947,6 +6060,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     this.onboardingCompleted = const Value.absent(),
     this.catalogRevision = const Value.absent(),
     this.defaultTargetSeconds = const Value.absent(),
+    this.decayEnabled = const Value.absent(),
   });
   static Insertable<AppPreferenceRow> custom({
     Expression<int>? id,
@@ -5959,6 +6073,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     Expression<bool>? onboardingCompleted,
     Expression<int>? catalogRevision,
     Expression<int>? defaultTargetSeconds,
+    Expression<bool>? decayEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5974,6 +6089,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
       if (catalogRevision != null) 'catalog_revision': catalogRevision,
       if (defaultTargetSeconds != null)
         'default_target_seconds': defaultTargetSeconds,
+      if (decayEnabled != null) 'decay_enabled': decayEnabled,
     });
   }
 
@@ -5988,6 +6104,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     Value<bool>? onboardingCompleted,
     Value<int>? catalogRevision,
     Value<int>? defaultTargetSeconds,
+    Value<bool>? decayEnabled,
   }) {
     return AppPreferencesCompanion(
       id: id ?? this.id,
@@ -6000,6 +6117,7 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       catalogRevision: catalogRevision ?? this.catalogRevision,
       defaultTargetSeconds: defaultTargetSeconds ?? this.defaultTargetSeconds,
+      decayEnabled: decayEnabled ?? this.decayEnabled,
     );
   }
 
@@ -6036,6 +6154,9 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
     if (defaultTargetSeconds.present) {
       map['default_target_seconds'] = Variable<int>(defaultTargetSeconds.value);
     }
+    if (decayEnabled.present) {
+      map['decay_enabled'] = Variable<bool>(decayEnabled.value);
+    }
     return map;
   }
 
@@ -6051,7 +6172,8 @@ class AppPreferencesCompanion extends UpdateCompanion<AppPreferenceRow> {
           ..write('reminderWeekdayMask: $reminderWeekdayMask, ')
           ..write('onboardingCompleted: $onboardingCompleted, ')
           ..write('catalogRevision: $catalogRevision, ')
-          ..write('defaultTargetSeconds: $defaultTargetSeconds')
+          ..write('defaultTargetSeconds: $defaultTargetSeconds, ')
+          ..write('decayEnabled: $decayEnabled')
           ..write(')'))
         .toString();
   }
@@ -6157,6 +6279,7 @@ typedef $$TricksTableCreateCompanionBuilder =
       Value<bool> isArchived,
       Value<int> timesRehearsed,
       Value<DateTime?> lastRehearsedAt,
+      Value<DateTime?> masteryDecayedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -6176,6 +6299,7 @@ typedef $$TricksTableUpdateCompanionBuilder =
       Value<bool> isArchived,
       Value<int> timesRehearsed,
       Value<DateTime?> lastRehearsedAt,
+      Value<DateTime?> masteryDecayedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -6281,6 +6405,11 @@ class $$TricksTableFilterComposer
 
   ColumnFilters<DateTime> get lastRehearsedAt => $composableBuilder(
     column: $table.lastRehearsedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get masteryDecayedAt => $composableBuilder(
+    column: $table.masteryDecayedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6399,6 +6528,11 @@ class $$TricksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get masteryDecayedAt => $composableBuilder(
+    column: $table.masteryDecayedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6476,6 +6610,11 @@ class $$TricksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get masteryDecayedAt => $composableBuilder(
+    column: $table.masteryDecayedAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6550,6 +6689,7 @@ class $$TricksTableTableManager
                 Value<bool> isArchived = const Value.absent(),
                 Value<int> timesRehearsed = const Value.absent(),
                 Value<DateTime?> lastRehearsedAt = const Value.absent(),
+                Value<DateTime?> masteryDecayedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TricksCompanion(
@@ -6567,6 +6707,7 @@ class $$TricksTableTableManager
                 isArchived: isArchived,
                 timesRehearsed: timesRehearsed,
                 lastRehearsedAt: lastRehearsedAt,
+                masteryDecayedAt: masteryDecayedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -6586,6 +6727,7 @@ class $$TricksTableTableManager
                 Value<bool> isArchived = const Value.absent(),
                 Value<int> timesRehearsed = const Value.absent(),
                 Value<DateTime?> lastRehearsedAt = const Value.absent(),
+                Value<DateTime?> masteryDecayedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => TricksCompanion.insert(
@@ -6603,6 +6745,7 @@ class $$TricksTableTableManager
                 isArchived: isArchived,
                 timesRehearsed: timesRehearsed,
                 lastRehearsedAt: lastRehearsedAt,
+                masteryDecayedAt: masteryDecayedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -10224,6 +10367,7 @@ typedef $$AppPreferencesTableCreateCompanionBuilder =
       Value<bool> onboardingCompleted,
       Value<int> catalogRevision,
       Value<int> defaultTargetSeconds,
+      Value<bool> decayEnabled,
     });
 typedef $$AppPreferencesTableUpdateCompanionBuilder =
     AppPreferencesCompanion Function({
@@ -10237,6 +10381,7 @@ typedef $$AppPreferencesTableUpdateCompanionBuilder =
       Value<bool> onboardingCompleted,
       Value<int> catalogRevision,
       Value<int> defaultTargetSeconds,
+      Value<bool> decayEnabled,
     });
 
 class $$AppPreferencesTableFilterComposer
@@ -10295,6 +10440,11 @@ class $$AppPreferencesTableFilterComposer
 
   ColumnFilters<int> get defaultTargetSeconds => $composableBuilder(
     column: $table.defaultTargetSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get decayEnabled => $composableBuilder(
+    column: $table.decayEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -10357,6 +10507,11 @@ class $$AppPreferencesTableOrderingComposer
     column: $table.defaultTargetSeconds,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get decayEnabled => $composableBuilder(
+    column: $table.decayEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppPreferencesTableAnnotationComposer
@@ -10415,6 +10570,11 @@ class $$AppPreferencesTableAnnotationComposer
     column: $table.defaultTargetSeconds,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get decayEnabled => $composableBuilder(
+    column: $table.decayEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$AppPreferencesTableTableManager
@@ -10464,6 +10624,7 @@ class $$AppPreferencesTableTableManager
                 Value<bool> onboardingCompleted = const Value.absent(),
                 Value<int> catalogRevision = const Value.absent(),
                 Value<int> defaultTargetSeconds = const Value.absent(),
+                Value<bool> decayEnabled = const Value.absent(),
               }) => AppPreferencesCompanion(
                 id: id,
                 soundEnabled: soundEnabled,
@@ -10475,6 +10636,7 @@ class $$AppPreferencesTableTableManager
                 onboardingCompleted: onboardingCompleted,
                 catalogRevision: catalogRevision,
                 defaultTargetSeconds: defaultTargetSeconds,
+                decayEnabled: decayEnabled,
               ),
           createCompanionCallback:
               ({
@@ -10488,6 +10650,7 @@ class $$AppPreferencesTableTableManager
                 Value<bool> onboardingCompleted = const Value.absent(),
                 Value<int> catalogRevision = const Value.absent(),
                 Value<int> defaultTargetSeconds = const Value.absent(),
+                Value<bool> decayEnabled = const Value.absent(),
               }) => AppPreferencesCompanion.insert(
                 id: id,
                 soundEnabled: soundEnabled,
@@ -10499,6 +10662,7 @@ class $$AppPreferencesTableTableManager
                 onboardingCompleted: onboardingCompleted,
                 catalogRevision: catalogRevision,
                 defaultTargetSeconds: defaultTargetSeconds,
+                decayEnabled: decayEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
