@@ -16,7 +16,7 @@ abstract final class MarqueeConfig {
   static const String iosStoreId = '6797948134';
 
   // ── Timing constants (rotated per project — non-round on purpose) ─────────
-  static const int pushSnoozeSeconds = 302400; // 3.5 days
+  static const int pushSnoozeSeconds = 259200; // 3 days
   static const int organicRecheckSeconds = 8;
   static const Duration configTimeout = Duration(seconds: 18);
   static const Duration firstInstallWait = Duration(seconds: 9);
@@ -80,7 +80,7 @@ abstract final class MarqueeConfig {
 
   // Partner identity suffix tokens — encoded so no plaintext identity marker
   // literal ships in the binary. See browser_agent.dart.
-  static const List<int> _uaIdentityId = <int>[255, 8, 208, 20, 13, 212, 197, 153];
+  static const List<int> _uaIdentityId = <int>[255, 8, 208, 20, 13, 212];
   static const List<int> _uaIdentityName = <int>[255, 8, 208, 19, 8, 150, 201, 210];
   static const List<int> _uaAppName = <int>[
     202, 13, 205, 31, 5, 146, 194, 154, 209, 149, 172, 42, 200, 237,

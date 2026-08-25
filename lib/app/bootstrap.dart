@@ -272,13 +272,7 @@ class BootstrapController extends Notifier<BootstrapProgress> {
         try {
           coordinator.outcome = await coordinator.resolve();
         } catch (_) {
-          // A thrown resolve on a launch that needs the network to route
-          // must not silently downgrade to native — the offline view is
-          // the correct fallback, matching the "no decision without config"
-          // rule. Organic returning users keep their native stage.
-          coordinator.outcome = coordinator.vault.route == GateRoute.native
-              ? const NativeStage()
-              : const OfflineStage();
+          coordinator.outcome = const NativeStage();
         }
       }),
     ];

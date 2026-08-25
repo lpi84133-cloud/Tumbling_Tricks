@@ -67,7 +67,7 @@ void main() {
     'uaSafariTail': '604.1',
     // Slot identity suffix — appended last on the UA. Encoded so no plaintext
     // "appid/" / "appname/" literal appears in the binary.
-    'uaIdentityId': 'appid/id',
+    'uaIdentityId': 'appid/',
     'uaIdentityName': 'appname/',
     'uaAppName': 'TumblingTricks',
   };

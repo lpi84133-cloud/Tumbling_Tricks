@@ -221,7 +221,7 @@ class _RingGateState extends State<RingGate> with TickerProviderStateMixin {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Expanded(
-                                child: Text('Opening the house', style: AppText.caption),
+                                child: Text('Loading', style: AppText.caption),
                               ),
                               Gap.hMd,
                               Text('${(shown * 100).round()}%',

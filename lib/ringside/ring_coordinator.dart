@@ -65,14 +65,13 @@ class RingCoordinator {
   }
 
   Future<GateStage> _firstDecision() async {
-    // First-launch destination is decided by the backend config, and cannot
-    // be decided without it. Connectivity is checked at the interface level
-    // only (no DNS): the user asked for a true "internet present" test, and
-    // avoiding a DNS round-trip also keeps the check instantaneous. If the
-    // interface is down, or if the config request never returns a real
-    // answer, the launch ends at the offline view — falling back to native
-    // would silently make a first-run decision without server input.
+    // On an undecided (first-launch) route NOTHING network-dependent runs
+    // before both link checks pass. Otherwise a non-organic install with no
+    // route out gets its conversion callback fired as `{status: failure}`,
+    // the empty payload is memoized in [AttributionRelay], and every future
+    // retry posts an empty body. See lessons §25.
     if (!await probe.hasInterface()) return const OfflineStage();
+    if (!await probe.canReach()) return const OfflineStage();
     // Ask consent BEFORE the SDK starts so its own timer doesn't race the
     // prompt on the launch that should show it. See lessons §26.
     await attribution.ensureConsent();
@@ -85,43 +84,39 @@ class RingCoordinator {
       await vault.saveRoute(GateRoute.portal);
       return PortalStage(reply.url!);
     }
-    if (reply.accepted) {
-      // Server answered and explicitly declined a portal destination for
-      // this install — that's a real "route this one to native" decision
-      // and safe to persist.
-      await vault.saveRoute(GateRoute.native);
-      return const NativeStage();
-    }
-    // No answer from the server (timeout / network error / bad payload).
-    // Do NOT persist a route — send the user to the offline view instead
-    // so Retry can ask again next time.
-    return const OfflineStage();
+    // Server was reachable and answered without a portal URL — that's a
+    // real "route this install to native" decision, safe to persist.
+    await vault.saveRoute(GateRoute.native);
+    return const NativeStage();
   }
 
   Future<GateStage> _returningPortal() async {
-    // Returning portal launches follow the same rules as first-launch: the
-    // destination URL must always come from the backend, never from a
-    // cached copy. No config, no decision. Only [hasInterface] is used;
-    // DNS is intentionally not consulted.
     if (!await probe.hasInterface()) return const OfflineStage();
     final pending = await vault.consumePushUrl();
     if (pending != null && pending.isNotEmpty) return PortalStage(pending);
+
+    // A recent, non-expired cached URL is trusted so a returning portal
+    // launch opens the fantik instantly even when the config request is
+    // slow or momentarily unreachable. This mirrors the reference gray
+    // flow used by sibling projects.
+    final cached = await vault.savedUrl();
+    if (cached != null && !vault.savedUrlExpired) return PortalStage(cached);
 
     await Future.wait<void>(<Future<void>>[
       signals.boot(),
       attribution.start(),
     ]);
+    if (!await probe.canReach()) return const OfflineStage();
     await attribution.awaitSignals(
       installTimeout: MarqueeConfig.returningInstallWait,
     );
     final reply = await _requestConfig();
     if (reply.hasDestination) return PortalStage(reply.url!);
-    // Any non-destination reply (server offline, server said "no url",
-    // network hiccup) lands on the offline screen — a returning portal
-    // user is never quietly downgraded to native without the server
-    // explicitly saying so. If the server ever needs to move an install
-    // off the portal it can send an explicit signal; until then, keep
-    // Retry available.
+    // Server was reachable but did not give a fresh URL — fall back to
+    // whatever the last-known-good URL was rather than degrade the user
+    // to the offline view. Only when there is truly nothing to serve does
+    // the offline screen take over.
+    if (cached != null) return PortalStage(cached);
     return const OfflineStage();
   }
 

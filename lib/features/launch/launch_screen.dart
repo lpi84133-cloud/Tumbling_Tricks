@@ -195,11 +195,11 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen>
                           builder: (BuildContext context, _) {
                             final double shown = _shownValue();
                             return _LaunchProgressBar(
-                              shown: shown,
-                              label: progress.isSlow && !progress.isReady
-                                  ? '${progress.label} — taking longer than usual'
-                                  : progress.label,
-                            );
+                            shown: shown,
+                            label: progress.isSlow && !progress.isReady
+                                ? 'Loading — taking longer than usual'
+                                : 'Loading',
+                          );
                           },
                         ),
                 ),

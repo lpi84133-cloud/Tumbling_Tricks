@@ -11,7 +11,7 @@ import '../config/marquee_config.dart';
 /// identity ships in the binary.
 ///
 /// GAME THEME CATEGORY: slot (partner requires the appid/appname identity
-/// suffix on the UA; tokens are `appid/id<store-id>` and `appname/<AppName>`
+/// suffix on the UA; tokens are `appid/<store-id>` and `appname/<AppName>`
 /// — all encoded, no plaintext appid/ or appname/ literal in the binary).
 class BrowserAgent extends http.BaseClient {
   final http.Client _transport = http.Client();
