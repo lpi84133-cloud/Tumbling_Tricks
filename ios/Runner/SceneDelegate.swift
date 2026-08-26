@@ -32,7 +32,7 @@ class SceneDelegate: FlutterSceneDelegate {
     #endif
   }
 
-  private static func destination(
+  static func destination(
     inside payload: [AnyHashable: Any]
   ) -> String? {
     let keys = ["deep_link", "target", "url", "deeplink", "link"]
