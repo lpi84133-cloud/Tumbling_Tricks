@@ -27,7 +27,12 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+  # Dynamic `use_frameworks!` collides with firebase_core 4.14+: the plugin is
+  # now a Swift class (`firebase_core.Swift.FLTFirebaseCorePlugin`) while
+  # GeneratedPluginRegistrant.m still imports the ObjC header, so Xcode sees
+  # two incompatible definitions of the same type. Static linkage is the
+  # Firebase-documented way to share a single definition across the app.
+  use_frameworks! :linkage => :static
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
