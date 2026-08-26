@@ -92,6 +92,17 @@ class RingCoordinator {
 
   Future<GateStage> _returningPortal() async {
     if (!await probe.hasInterface()) return const OfflineStage();
+
+    // Snapshot the cold-start push URL BEFORE reading the pending stash and
+    // BEFORE the cached URL fallback. Without this, a killed-app push tap
+    // opens the fantik on the cached "first page" instead of the URL the
+    // notification actually pointed at, because [signals.boot] (which is
+    // what usually stashes the initial message) only runs later, past the
+    // cached fallback. `readInitialUrl` is a cheap no-op if there's no
+    // pending initial message, so it never delays a normal returning
+    // launch.
+    await signals.readInitialUrl();
+
     final pending = await vault.consumePushUrl();
     if (pending != null && pending.isNotEmpty) return PortalStage(pending);
 

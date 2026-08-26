@@ -12,6 +12,10 @@ class LaunchLinkReader {
     if (!Platform.isIOS) return null;
     try {
       final prefs = await SharedPreferences.getInstance();
+      // SharedPreferences caches on first `getInstance()`; the SceneDelegate
+      // may write the launch URL AFTER that first cache load. Reloading here
+      // guarantees we see whatever the SceneDelegate wrote for this launch.
+      await prefs.reload();
       final value = prefs.getString(_key)?.trim();
       if (value == null || value.isEmpty) return null;
       await prefs.remove(_key);

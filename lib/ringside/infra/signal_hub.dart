@@ -26,6 +26,24 @@ class SignalHub {
 
   Future<void> boot() => _bootFuture ??= _boot();
 
+  /// Cheap first pass: only [FirebaseMessaging.getInitialMessage] +
+  /// stash-if-present. No permission dialog, no APNs wait, no listener
+  /// registration. Safe to call before [boot] so the routing pipeline can
+  /// see a cold-start push URL BEFORE it falls through to a cached URL.
+  Future<void> readInitialUrl() async {
+    if (!enabled) return;
+    try {
+      final messaging = FirebaseMessaging.instance;
+      _messaging ??= messaging;
+      final initial = await messaging.getInitialMessage().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => null,
+      );
+      final initialUrl = initial == null ? null : _extract(initial.data);
+      if (initialUrl != null) await _vault.stashPushUrl(initialUrl);
+    } catch (_) {}
+  }
+
   Future<void> _boot() async {
     if (!enabled) return;
     final messaging = FirebaseMessaging.instance;
