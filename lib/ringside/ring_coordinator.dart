@@ -52,6 +52,14 @@ class RingCoordinator {
     final coldUrl = await LaunchLinkReader.consume();
     if (coldUrl != null) {
       await vault.saveRoute(GateRoute.portal);
+      // Drain Firebase's initial-message cache (and anything it might have
+      // just stashed into the vault) so the SAME tapped push does NOT come
+      // back on the next relaunch as a stray pending URL. Without this,
+      // signals.boot() inside _backgroundDispatch runs `getInitialMessage`,
+      // stashes the cold-tap URL into `pending`, and the next `_returningPortal`
+      // consumes it and opens the fantik on that same URL even though the
+      // user never tapped the notification a second time.
+      await signals.readInitialUrl();
       await vault.consumePushUrl();
       unawaited(_backgroundDispatch());
       return PortalStage(coldUrl, coldLaunch: true);
