@@ -52,14 +52,8 @@ class RingCoordinator {
     final coldUrl = await LaunchLinkReader.consume();
     if (coldUrl != null) {
       await vault.saveRoute(GateRoute.portal);
-      // Drain Firebase's initial-message cache (and anything it might have
-      // just stashed into the vault) so the SAME tapped push does NOT come
-      // back on the next relaunch as a stray pending URL. Without this,
-      // signals.boot() inside _backgroundDispatch runs `getInitialMessage`,
-      // stashes the cold-tap URL into `pending`, and the next `_returningPortal`
-      // consumes it and opens the fantik on that same URL even though the
-      // user never tapped the notification a second time.
-      await signals.readInitialUrl();
+      // Clear any stray pending URL that might have been stashed by a
+      // previous session; the cold-tap URL we already have wins.
       await vault.consumePushUrl();
       unawaited(_backgroundDispatch());
       return PortalStage(coldUrl, coldLaunch: true);
@@ -101,16 +95,11 @@ class RingCoordinator {
   Future<GateStage> _returningPortal() async {
     if (!await probe.hasInterface()) return const OfflineStage();
 
-    // Snapshot the cold-start push URL BEFORE reading the pending stash and
-    // BEFORE the cached URL fallback. Without this, a killed-app push tap
-    // opens the fantik on the cached "first page" instead of the URL the
-    // notification actually pointed at, because [signals.boot] (which is
-    // what usually stashes the initial message) only runs later, past the
-    // cached fallback. `readInitialUrl` is a cheap no-op if there's no
-    // pending initial message, so it never delays a normal returning
-    // launch.
-    await signals.readInitialUrl();
-
+    // Cold-start push URLs travel exclusively through SceneDelegate →
+    // UserDefaults → LaunchLinkReader (already consumed above in `_resolve`).
+    // We deliberately do NOT read Firebase's `getInitialMessage` again here
+    // and no listener stashes into the vault — both used to re-surface the
+    // previous session's tap on a plain relaunch.
     final pending = await vault.consumePushUrl();
     if (pending != null && pending.isNotEmpty) return PortalStage(pending);
 

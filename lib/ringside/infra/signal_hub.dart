@@ -26,34 +26,34 @@ class SignalHub {
 
   Future<void> boot() => _bootFuture ??= _boot();
 
-  /// Cheap first pass: only [FirebaseMessaging.getInitialMessage] +
-  /// stash-if-present. No permission dialog, no APNs wait, no listener
-  /// registration. Safe to call before [boot] so the routing pipeline can
-  /// see a cold-start push URL BEFORE it falls through to a cached URL.
-  Future<void> readInitialUrl() async {
-    if (!enabled) return;
-    try {
-      final messaging = FirebaseMessaging.instance;
-      _messaging ??= messaging;
-      final initial = await messaging.getInitialMessage().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => null,
-      );
-      final initialUrl = initial == null ? null : _extract(initial.data);
-      if (initialUrl != null) await _vault.stashPushUrl(initialUrl);
-    } catch (_) {}
-  }
+  /// Kept only for source-compatibility with older call sites. The initial
+  /// message cache is drained once per process in [_boot] with the result
+  /// intentionally discarded, so nothing else should — or has to — read it.
+  /// Making this a no-op prevents the "special screen keeps opening on
+  /// plain relaunches" regression, where a second `getInitialMessage` call
+  /// would re-yield the same tapped push and stash it back into the vault.
+  Future<void> readInitialUrl() async {}
 
   Future<void> _boot() async {
     if (!enabled) return;
     final messaging = FirebaseMessaging.instance;
     _messaging = messaging;
-    final initial = await messaging.getInitialMessage().timeout(
-      const Duration(seconds: 4),
-      onTimeout: () => null,
-    );
-    final initialUrl = initial == null ? null : _extract(initial.data);
-    if (initialUrl != null) await _vault.stashPushUrl(initialUrl);
+
+    // Acknowledge Firebase's cached initial message so the iOS SDK marks it
+    // as "read" and stops replaying it on subsequent cold launches. The
+    // result is intentionally discarded: the cold-tap URL that we actually
+    // route on already reaches Dart through the independent
+    // SceneDelegate → UserDefaults → LaunchLinkReader path, and stashing
+    // this value into the vault (as previous revisions did) is exactly what
+    // caused the "special screen reappears on plain relaunch" bug. Without
+    // this drain, `getInitialMessage()` would keep returning the same
+    // tapped push across relaunches indefinitely.
+    try {
+      await messaging.getInitialMessage().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => null,
+      );
+    } catch (_) {}
 
     FirebaseMessaging.onBackgroundMessage(ringBackgroundMessage);
     await messaging.setForegroundNotificationPresentationOptions(
@@ -68,12 +68,11 @@ class SignalHub {
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       final url = _extract(message.data);
       if (url == null) return;
-      final callback = onDestination;
-      if (callback == null) {
-        _vault.stashPushUrl(url);
-      } else {
-        callback(url);
-      }
+      // Only forward to a live PortalView. We deliberately do NOT stash a
+      // URL into the vault from here: cold-start taps arrive via
+      // LaunchLinkReader, and stashing on top of that is what caused the
+      // "special screen reappears on next plain relaunch" bug.
+      onDestination?.call(url);
     });
     await _waitForApns();
     _token = await messaging.getToken();
