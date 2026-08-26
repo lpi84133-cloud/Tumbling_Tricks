@@ -2,7 +2,7 @@ name: tumbling_tricks
 description: "Offline planner for stage performances: build acts, order tricks, track rehearsals."
 publish_to: 'none'
 
-version: 1.0.3+6
+version: 1.0.3+7
 
 environment:
   sdk: ^3.12.2

@@ -1,5 +1,9 @@
 import UserNotifications
 
+#if canImport(FirebaseMessaging)
+import FirebaseMessaging
+#endif
+
 /// Downloads the FCM `image` (or `attachment-url`) payload and attaches it to
 /// the notification so lock-screen previews render a picture. Everything runs
 /// against the OS-provided expiration window (~30 s); if we run out of time,
@@ -19,11 +23,38 @@ class TrickChimeService: UNNotificationServiceExtension {
     self.deliver = contentHandler
     self.mutable = request.content.mutableCopy() as? UNMutableNotificationContent
 
+    guard let mutable = mutable else {
+      contentHandler(request.content)
+      return
+    }
+
+    // Let Firebase Messaging see this delivery. Without this call, FCM's
+    // internal tracking is missing the "notification tapped from killed
+    // app" event, and `getInitialMessage()` on the Dart side can return
+    // nil for a legitimate cold-start tap.
+    #if canImport(FirebaseMessaging)
+    Messaging.serviceExtension().populateNotificationContent(
+      mutable,
+      withContentHandler: { [weak self] populated in
+        guard let self = self else {
+          contentHandler(populated)
+          return
+        }
+        self.mutable = (populated.mutableCopy() as? UNMutableNotificationContent) ?? mutable
+        self.attachMediaIfPresent()
+      }
+    )
+    #else
+    attachMediaIfPresent()
+    #endif
+  }
+
+  private func attachMediaIfPresent() {
     guard
       let mutable = mutable,
       let target = TrickChimeService.pickMediaURL(mutable.userInfo)
     else {
-      contentHandler(mutable ?? request.content)
+      finish()
       return
     }
 
